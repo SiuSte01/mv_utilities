@@ -8,11 +8,19 @@ setup(name='mvUtil',
       author='Stephen Siu',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
-			'': ['*.tab','*.txt','*.cfg','*.pm','*.xlsm'],
-			'HGWorkFlow/src': ['*']
+			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
+			'HGWorkFlow/src': ['*.sas'],
+				'HGWorkFlow/src/AdvisoryBoard': ['*'],
+				'HGWorkFlow/src/INA': ['*'],
+				'HGWorkFlow/src/INAA': ['*'],
+				'HGWorkFlow/src/Trending': ['*'],
 		},
       packages=[
-			'HGWorkFlow/src'
+			'HGWorkFlow/src',
+				'HGWorkFlow/src/AdvisoryBoard',
+				'HGWorkFlow/src/INA',
+				'HGWorkFlow/src/INAA',
+				'HGWorkFlow/src/Trending'
 			#	'aggr/cloneAggr',
 			#	'aggr/ina',
 			#		'aggr/ina/filter',
