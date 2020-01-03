@@ -111,10 +111,8 @@ foreach my $x (keys %{$settingsUsed})
 my @settingsUsedArrSorted = sort {lc($a) cmp lc($b)} @settingsUsedArr;
 
 #MiscFunctions::screenPrintHash(hash=>$memoryHash,keysOnly=>"Y");
-#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"SET_VARS"});
-#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"AGGR_SET_VARS"});
 my $requestType = "P";
-$requestType = $memoryHash->{"AGGR_SET_VARS"}->{"REQUEST_TYPE"}[0] if(exists $memoryHash->{"AGGR_SET_VARS"}->{"REQUEST_TYPE"} && $memoryHash->{"AGGR_SET_VARS"}->{"REQUEST_TYPE"}[0] ne "NULL");
+$requestType = $settingVars->{"REQUEST_TYPE"}[0] if(exists $settingVars->{"REQUEST_TYPE"} && $settingVars->{"REQUEST_TYPE"}[0] ne "NULL");
 
 my @buckets = ();
 foreach my $x (keys %{$memoryHash->{"JVS_RAW"}})
@@ -190,14 +188,16 @@ sub executeBothProcesses
 
 sub runProjectionsStep
 {
-	system("mkdir","-p",$memoryHash->{"AGGR_SET_VARS"}->{"FXFILES"}[0]);
+	my $fxFiles = $codeRepo . "/";
+	$fxFiles .= $settingVars->{"FXFILES"}[0] ne "NULL" ? "InputDataFiles_NewWH_" . $settingVars->{"FXFILES"}[0] : "InputDataFiles_NewWH";
+	system("mkdir","-p",$fxFiles);
 	my @reqFiles = qw/ahd_beds_nodup.sas7bdat aha_demo.sas7bdat covar_under65.sas7bdat covar_county_unemp.sas7bdat covar_ma_penetration.sas7bdat covar_hi_expend.sas7bdat CMS_ASC_ProcedureData.txt HospitalExclusionList.tab ins_mapenet.sas7bdat mdsi_bedcount_audit.sas7bdat test_u65byhsa.sas7bdat xwalk_zip.sas7bdat zip2fips.sas7bdat/;
-	print $memoryHash->{"AGGR_SET_VARS"}->{"FXFILES"}[0] . "\n";
+	print $fxFiles . "\n";
 	foreach my $x (@reqFiles)
 	{
-		unless(-e $memoryHash->{"AGGR_SET_VARS"}->{"FXFILES"}[0] . "/" . $x)
+		unless(-e $fxFiles . "/" . $x)
 		{
-			system("cp " . $codeRepo . "/InputDataFiles_NewWH/" . $x . " " . $memoryHash->{"AGGR_SET_VARS"}->{"FXFILES"}[0] . "/" . $x);
+			system("cp " . $codeRepo . "/InputDataFiles_NewWH/" . $x . " " . $fxFiles . "/" . $x);
 		}
 	}
 	my $cxwStatus = system("createxwalks.py");
@@ -212,11 +212,11 @@ sub runMakefileStep
 	my $requestType = $args{requestType} || die "requestType=> parameter is required\n";
 	my @targs = ("buckets");
 	#"patch buckets combined counts";
-	unless(uc($memoryHash->{"AGGR_SET_VARS"}->{"DONT_PATCH"}[0]) eq "Y")
+	unless(uc($settingVars->{"DONT_PATCH"}[0]) eq "Y")
 	{
 		push(@targs,"patch");
 	}
-	if(uc($memoryHash->{"AGGR_SET_VARS"}->{"COMBINE_BUCKETS"}[0]) eq "Y")
+	if(uc($settingVars->{"COMBINE_BUCKETS"}[0]) eq "Y")
 	{
 		push(@targs,"combined","counts");
 	}
@@ -284,7 +284,7 @@ sub runQCStep
 		chdir($rootLoc);
 	}
 	system("wc -l */Projections/*/*_projection* > projection_counts.txt");
-	if(uc($memoryHash->{"AGGR_SET_VARS"}->{"COMBINE_BUCKETS"}[0]) eq "Y")
+	if(uc($settingVars->{"COMBINE_BUCKETS"}[0]) eq "Y")
 	{
 		print "RUNNING QC CHECK FOR Combined Deliverable...";
 		die "\n\tmilestones Directory missing for Combined Deliverable\n" unless -d "milestones";
@@ -300,7 +300,6 @@ sub readInputs
 	$memoryHash->{"JVS_RAW"} = MiscFunctions::fillDataHashes(file=>$jvsTab,hashKey=>\@jvsKey);
 	$memoryHash->{"CGR_RAW"} = MiscFunctions::fillDataHashes(file=>$cgrTab,hashKey=>\@cgrKey);
 	$memoryHash->{"CGM_RAW"} = MiscFunctions::fillDataHashes(file=>$cgmTab,hashKey=>\@cgmKey);
-	$memoryHash->{"AGGR_SET_VARS"} = MiscFunctions::createSettingHash(config=>"config/settings.cfg");
 	if(-e "donotproject.tab")
 	{
 		my @dnpKey = qw/BUCKET/;
@@ -431,8 +430,6 @@ sub readInputs
 	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"JVS_RAW"});
 	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"CGR_RAW"});
 	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"CGM_RAW"});
-	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"SET_VARS"});
-	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"AGGR_SET_VARS"});
 	#MiscFunctions::screenPrintHash(hash=>$memoryHash,keysOnly=>"Y");
 }
 
@@ -536,7 +533,7 @@ sub buildFolders
 		}
 		##########END COMMENT BLOCK FOR input.txt##########
 		
-		my $vint = $memoryHash->{"AGGR_SET_VARS"}->{"VINTAGE"}[0];
+		my $vint = $settingVars->{"VINTAGE"}[0];
 		my @dateArr = split("/",$vint);
 		my $vintageDate = $dateArr[2] . $dateArr[0] . $dateArr[1];
 		#system("cp cms_poidlist.sas7bdat " . $bucket . "/Projections/Hospital/IP/cms_poidlist.sas7bdat");
@@ -636,14 +633,15 @@ sub printInputFile
 	my $count = $args{count} || die "\ncount=> parameter is required\n";
 	my $type = $args{type} || die "\ntype=> parameter is required\n";
 	my $options = $args{options} || die "\noptions=> parameter is required\n";
-	my $vint = $memoryHash->{"AGGR_SET_VARS"}->{"VINTAGE"}[0];
-	my $aggrId = $memoryHash->{"AGGR_SET_VARS"}->{"JOB_ID"}[0];
-	my $user = $memoryHash->{"AGGR_SET_VARS"}->{"USERNAME"}[0];
-	my $pass = $memoryHash->{"AGGR_SET_VARS"}->{"PASSWORD"}[0];
-	my $inst = $memoryHash->{"AGGR_SET_VARS"}->{"INSTANCE"}[0];
-	my $aggrTab = "claims_aggr.pxdx_aggregations";
-	my $claimPatTable = "claims_aggr.pxdx_claim_patient_ratio";
-	my $fxFiles = $memoryHash->{"AGGR_SET_VARS"}->{"FXFILES"}[0];
+	my $vint = $settingVars->{"VINTAGE"}[0];
+	my $aggrId = $settingVars->{"JOB_ID"}[0];
+	my $user = $settingVars->{"USERNAME"}[0];
+	my $pass = $settingVars->{"PASSWORD"}[0];
+	my $inst = $settingVars->{"INSTANCE"}[0];
+	my $aggrTab = $settingVars->{"AGGREGATION_TABLE"}[0];
+	my $claimPatTable = $settingVars->{"CLAIM_PATIENT_TABLE"}[0];
+	my $fxFiles = $codeRepo . "/";
+	$fxFiles .= $settingVars->{"FXFILES"}[0] ne "NULL" ? "InputDataFiles_NewWH_" . $settingVars->{"FXFILES"}[0] : "InputDataFiles_NewWH";
 	my $addRefOverride = uc($settingVars->{"ADD_REF_OVERRIDE"}[0]);
 	my $addRefDocFlag = "N";
 	if($addRefOverride eq "Y")
@@ -941,7 +939,7 @@ sub runProjections
 			else
 			{
 				print "\t\tRUNNING IP PROJECTIONS FOR " . $bucket . "\n";
-				my $vint = $memoryHash->{"AGGR_SET_VARS"}->{"VINTAGE"}[0];
+				my $vint = $settingVars->{"VINTAGE"}[0];
 				my @dateArr = split("/",$vint);
 				my $vintageDate = $dateArr[2] . $dateArr[0] . $dateArr[1];
 				chdir($bucket . "/Projections/Hospital/IP");
