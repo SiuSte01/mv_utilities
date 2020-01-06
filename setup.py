@@ -9,7 +9,7 @@ setup(name='mvUtil',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
-			'HGWorkFlow/src': ['*.sas'],
+			'HGWorkFlow/src': ['dopatients.pl','project_PAC.pl','*.sas'],
 				'HGWorkFlow/src/AdvisoryBoard': ['*'],
 				'HGWorkFlow/src/INA': ['*'],
 				'HGWorkFlow/src/INAA': ['*'],
