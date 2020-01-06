@@ -10,12 +10,14 @@ use Cwd;
 my $scriptDir;
 my $libDir;
 my $aggrDir;
+my $codeDir;
 BEGIN
 {
 	$scriptDir = Cwd::abs_path(dirname($0));
 	my $lib = dirname($scriptDir);
 	if($lib =~ m/mv_utilities/)
 	{
+		$codeDir = $lib . "/src";
 		$lib =~ s/mv_utilities.*/perl_utilities/;
 		$libDir = Cwd::abs_path($lib) . "/lib";
 		$aggrDir = Cwd::abs_path($lib) . "/aggr";
@@ -30,6 +32,7 @@ BEGIN
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
 		$aggrDir = $sitePath . "/aggr";
+		$codeDir = $sitePath . "/HGWorkFlow/src";
 	}
 }
 use lib $libDir;
@@ -65,8 +68,10 @@ my $codeBase = $settingVars->{"CODE_BASE"}[0];
 
 $ENV{CODEBASE} = uc($codeBase);
 my $rootLoc = getcwd();
-my $codeRepo = "/vol/datadev/Statistics/Projects/HGWorkFlow";
-my $codeDir = $codeRepo . "/" .  $codeBase;
+my $codeRepo = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow";
+print $codeDir . "\n";
+exit 0;
+#my $codeDir = $codeRepo . "/" .  $codeBase;
 my $projections = "Projections";
 my $codes = "codes";
 my $runComb = 0;
