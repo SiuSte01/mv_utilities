@@ -926,7 +926,7 @@ sub runProjections
 				foreach my $x ("Child","NonChild")
 				{
 					chdir($bucket . "/Projections/Hospital/IP/" . $x);
-					system("sas -noterminal -memsize 4G /vol/datadev/Statistics/Projects/HGWorkFlow/" . $codeBase . "/project_IP_facility.sas");
+					system("sas -noterminal -memsize 4G " . $codeDir . "/project_IP_facility.sas");
 					if($x eq "NonChild")
 					{
 						MiscFunctions::symlinkFile(file=>"poidpf.sas7bdat",path=>"../");
@@ -935,8 +935,8 @@ sub runProjections
 					chdir($rootLoc);
 				}
 				chdir($bucket . "/Projections/Hospital/IP");
-				system("sas -noterminal -memsize 4G /vol/datadev/Statistics/Projects/HGWorkFlow/" . $codeBase . "/project_IP_CombineFacility.sas");
-				system("sas -noterminal -memsize 4G /vol/datadev/Statistics/Projects/HGWorkFlow/" . $codeBase . "/project_IP_Practitioner.sas");
+				system("sas -noterminal -memsize 4G " . $codeDir . "/project_IP_CombineFacility.sas");
+				system("sas -noterminal -memsize 4G " . $codeDir . "/project_IP_Practitioner.sas");
 				chdir($rootLoc);
 			}
 			else
@@ -946,7 +946,7 @@ sub runProjections
 				my @dateArr = split("/",$vint);
 				my $vintageDate = $dateArr[2] . $dateArr[0] . $dateArr[1];
 				chdir($bucket . "/Projections/Hospital/IP");
-				system("sas -noterminal -memsize 4G /vol/datadev/Statistics/Projects/HGWorkFlow/" . $codeBase . "/project_IP_facility.sas");
+				system("sas -noterminal -memsize 4G " . $codeDir . "/project_IP_facility.sas");
 				system("sas -noterminal -memsize 4G " . $codeDir . "/project_IP_Practitioner.sas");
 				chdir($rootLoc);
 			}
