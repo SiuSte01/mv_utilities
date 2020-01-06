@@ -54,7 +54,7 @@ GetOptions(
 
 die "-config parameter is required\n" unless $config;
 
-MiscFunctions::setEnv();
+#MiscFunctions::setEnv();
 system("which createxwalks.py");
 
 my $settingVars = MiscFunctions::createSettingHash(config=>$config);
