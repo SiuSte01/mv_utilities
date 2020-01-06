@@ -69,8 +69,6 @@ my $codeBase = $settingVars->{"CODE_BASE"}[0];
 $ENV{CODEBASE} = uc($codeBase);
 my $rootLoc = getcwd();
 my $codeRepo = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow";
-print $codeDir . "\n";
-exit 0;
 #my $codeDir = $codeRepo . "/" .  $codeBase;
 my $projections = "Projections";
 my $codes = "codes";
