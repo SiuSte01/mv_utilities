@@ -1,6 +1,40 @@
-#!/usr/bin/perl -w 
+#!/usr/bin/perl -w
+#Includes
 use strict;
-use lib "/vol/cs/clientprojects/Facility_Automation/scripts/lib";
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $aggrDir;
+my $codeDir;
+BEGIN
+{
+   $scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		$codeDir = $lib . "/src";
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$aggrDir = Cwd::abs_path($lib) . "/aggr";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$aggrDir = $sitePath . "/aggr";
+		$codeDir = $sitePath . "/HGWorkFlow/src";
+	}
+}
+use lib $libDir;
 use MiscFunctions;
 
 #driver script to run set up for AB/CPM, create the directories for each 
@@ -35,10 +69,13 @@ use MiscFunctions;
 #note2 - Buildigrations and Checkmigrations only relevant for AB
 #  - PrevMF and CurrMF only needed for Buildmigrations and Checkmigrations
 
-MiscFunctions::setEnv();
+#MiscFunctions::setEnv();
+
+print join("\n",$scriptDir,$libDir,$aggrDir,$codeDir) . "\n";
+exit 0;
 
 #set the location of the QC R script
-my $qcscript="/vol/cs/clientprojects/Facility_Automation/scripts/scripts/scatterQC/customQA/ABCPM_monthlyQC.R";
+my $qcscript = "/vol/cs/clientprojects/Facility_Automation/scripts/scripts/scatterQC/customQA/ABCPM_monthlyQC.R";
 
 #open runinputs and grab the info
 my %params;

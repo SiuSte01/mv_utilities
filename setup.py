@@ -30,6 +30,7 @@ setup(name='mvUtil',
 			#		'aggr/pxdx/buildAllCodesExact'
 			],
       scripts=[
-			'HGWorkFlow/src/multiBucket.pl'
+			'HGWorkFlow/src/multiBucket.pl',
+			'HGWorkFlow/src/run_ABCPM.pl'
 			],
       zip_safe=False)
