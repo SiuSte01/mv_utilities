@@ -10,6 +10,7 @@ my $scriptDir;
 my $libDir;
 my $aggrDir;
 my $codeDir;
+my $scatterDir;
 BEGIN
 {
    $scriptDir = Cwd::abs_path(dirname($0));
@@ -20,6 +21,7 @@ BEGIN
 		$lib =~ s/mv_utilities.*/perl_utilities/;
 		$libDir = Cwd::abs_path($lib) . "/lib";
 		$aggrDir = Cwd::abs_path($lib) . "/aggr";
+		$scatterDir = Cwd::abs_path($lib) . "/scripts/scatterQC/customQA";
 	}
 	else
 	{
@@ -32,6 +34,7 @@ BEGIN
 		$libDir = $sitePath . "/lib";
 		$aggrDir = $sitePath . "/aggr";
 		$codeDir = $sitePath . "/HGWorkFlow/src";
+		$scatterDir = $sitePath . "/scripts/scatterQC/customQA";
 	}
 }
 use lib $libDir;
@@ -71,7 +74,7 @@ use MiscFunctions;
 
 #MiscFunctions::setEnv();
 
-print join("\n",$scriptDir,$libDir,$aggrDir,$codeDir) . "\n";
+print join("\n",$scriptDir,$libDir,$aggrDir,$codeDir,$scatterDir) . "\n";
 exit 0;
 
 #set the location of the QC R script
