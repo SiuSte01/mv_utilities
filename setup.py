@@ -9,7 +9,7 @@ setup(name='mvUtil',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
-			'HGWorkFlow/src': ['dopatients.pl','project_PAC.pl','*.sas'],
+			'HGWorkFlow/src': ['dopatients.pl','multiBucket_ABCPM.pl','project_PAC.pl','sendemail.pl','*.sas'],
 				'HGWorkFlow/src/AdvisoryBoard': ['*'],
 				'HGWorkFlow/src/INA': ['*'],
 				'HGWorkFlow/src/INAA': ['*'],
@@ -31,7 +31,6 @@ setup(name='mvUtil',
 			],
       scripts=[
 			'HGWorkFlow/src/multiBucket.pl',
-			'HGWorkFlow/src/run_ABCPM.pl',
-			'HGWorkFlow/src/sendemail.pl'
+			'HGWorkFlow/src/run_ABCPM.pl'
 			],
       zip_safe=False)

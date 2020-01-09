@@ -269,8 +269,8 @@ if($params{AnalysisType} eq "Projections")
 	}
 	
 	#run createxwalks
-	my $cxwStatus = system("createxwalks.py");
-	die "createxwalks finished with non-zero exit code: " . $cxwStatus . ". run_ABCPM quitting.\n" unless $cxwStatus == 0;
+	#my $cxwStatus = system("createxwalks.py");
+	#die "createxwalks finished with non-zero exit code: " . $cxwStatus . ". run_ABCPM quitting.\n" unless $cxwStatus == 0;
 	
 	#next, loop over settings:
 	SETTLOOP: foreach my $sett (sort keys %settings)
@@ -293,7 +293,7 @@ if($params{AnalysisType} eq "Projections")
 		my $mbTimeBegin = time();
 		system("perl " . $codeDir . "/multiBucket_ABCPM.pl $params{Client} $sett $params{Codebase}");
 		#my $emailstr=$sett." Projections";
-		#system("perl /vol/datadev/Statistics/Projects/HGWorkFlow/$params{Codebase}/sendemail.pl $emailstr");
+		#system("perl " . $codeDir . "/sendemail.pl $emailstr");
 		my $mbTimeEnd = time();
 		print "multiBucket_ABCPM for setting: " . $sett . " complete\n";
 		my $mbRunTime = $mbTimeEnd - $mbTimeBegin;
@@ -327,7 +327,7 @@ elsif($params{AnalysisType} eq "QC")
 				my $qcTimeBegin = time();
 				system("R CMD BATCH --vanilla $qcscript");
 				#my $emailstr=$sett." QC script";
-				#system("perl /vol/datadev/Statistics/Projects/HGWorkFlow/$params{Codebase}/sendemail.pl $emailstr");
+				#system("perl " . $codeDir . "/sendemail.pl $emailstr");
 				my $qcTimeEnd = time();
 				print "QC for setting: " . $sett . " complete\n";
 				my $qcRunTime = $qcTimeEnd - $qcTimeBegin;
@@ -356,7 +356,7 @@ elsif($params{AnalysisType} eq "Buildmigrations")
 	my @g=split("\/",$params{CurrMF});
 	my $fileloc=join("\/",@g[0 .. ($#g-2)]);
 	my $dirtymig = $fileloc."/migration_unique.tab";
-	system("perl /vol/datadev/Statistics/Projects/HGWorkFlow/$params{Codebase}/AdvisoryBoard/clean_migrations.pl $dirtymig");
+	system("perl " . $codeDir . "/AdvisoryBoard/clean_migrations.pl $dirtymig");
 	my $clmigfile="cleaned_migrations.tab";
 	
 	#go into each setting and run the build migr steps if setting and result exists
@@ -377,7 +377,7 @@ elsif($params{AnalysisType} eq "Buildmigrations")
 				my $bmMinutes = $bmRunTime/60;
 				print "Job took " . $bmMinutes . " minutes\n";
 				#my $emailstr=$sett." buildmigrations steps";
-				#system("perl /vol/datadev/Statistics/Projects/HGWorkFlow/$params{Codebase}/sendemail.pl $emailstr");
+				#system("perl " . $codeDir . "/sendemail.pl $emailstr");
 			}
 			else
 			{
@@ -415,7 +415,7 @@ elsif($params{AnalysisType} eq "Checkmigrations")
 				my $cmMinutes = $cmRunTime/60;
 				print "Job took " . $cmMinutes . " minutes\n";
 				#my $emailstr=$sett." checkmigrations steps";
-				#system("perl /vol/datadev/Statistics/Projects/HGWorkFlow/$params{Codebase}/sendemail.pl $emailstr");
+				#system("perl " . $codeDir . "/sendemail.pl $emailstr");
 			}
 			else
 			{
