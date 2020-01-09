@@ -31,6 +31,7 @@ setup(name='mvUtil',
 			],
       scripts=[
 			'HGWorkFlow/src/multiBucket.pl',
-			'HGWorkFlow/src/run_ABCPM.pl'
+			'HGWorkFlow/src/run_ABCPM.pl',
+			'HGWorkFlow/src/sendemail.pl'
 			],
       zip_safe=False)
