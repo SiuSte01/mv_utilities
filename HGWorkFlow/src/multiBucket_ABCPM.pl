@@ -1,6 +1,37 @@
 #!/usr/bin/perl -w
+#Includes
 use strict;
-use lib "/vol/cs/clientprojects/Facility_Automation/scripts/lib";
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $aggrDir;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$aggrDir = Cwd::abs_path($lib) . "/aggr";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$aggrDir = $sitePath . "/aggr";
+	}
+}
+use lib $libDir;
 use MiscFunctions;
 
 #usage perl /vol/datadev/Statistics/Projects/HGWorkFlow/Dev/multiBucket_ABCPM.pl AB|CPM IP|OP|Freestanding|OfficeASC|SNF  Dev|Prod_NewWH

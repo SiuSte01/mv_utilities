@@ -72,8 +72,6 @@ use MiscFunctions;
 #note2 - Buildigrations and Checkmigrations only relevant for AB
 #  - PrevMF and CurrMF only needed for Buildmigrations and Checkmigrations
 
-#MiscFunctions::setEnv();
-
 #set the location of the QC R script
 my $qcscript = $scatterDir . "/ABCPM_monthlyQC.R";
 
@@ -239,9 +237,14 @@ if($params{AnalysisType} eq "Projections")
 	my $hgRoot = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow";
 	$memoryHash->{"SET_VARS"} = MiscFunctions::createSettingHash(config=>"config/settings.cfg");
 	#MiscFunctions::screenPrintHash(hash=>$memoryHash->{"SET_VARS"});
+	if($memoryHash->{"SET_VARS"}->{"FXFILES"}[0] ne "NULL" && $memoryHash->{"SET_VARS"}->{"FXFILES"}[0] =~ m/\//)
+	{
+		die "FXFILES has a '/' character. FXFILES cannot be a path and must be a suffix or null. run_ABCPM quitting\n";
+	}
 	my $vintage = $memoryHash->{"SET_VARS"}->{"VINTAGE"}[0];
 	$vintage = MiscFunctions::normalizeDate(date=>$vintage,yyyymmdd=>"Y");
-	my $fxFiles = $memoryHash->{"SET_VARS"}->{"FXFILES"}[0];
+	my $fxFiles = $hgRoot . "/";
+	$fxFiles .= $memoryHash->{"SET_VARS"}->{"FXFILES"}[0] ne "NULL" ? "InputDataFiles_NewWH_" . $memoryHash->{"SET_VARS"}->{"FXFILES"}[0] : "InputDataFiles_NewWH";
 	my $instance = $memoryHash->{"SET_VARS"}->{"INSTANCE"}[0];
 	my $username = $memoryHash->{"SET_VARS"}->{"USERNAME"}[0];
 	my $password = $memoryHash->{"SET_VARS"}->{"PASSWORD"}[0];
@@ -269,8 +272,8 @@ if($params{AnalysisType} eq "Projections")
 	}
 	
 	#run createxwalks
-	#my $cxwStatus = system("createxwalks.py");
-	#die "createxwalks finished with non-zero exit code: " . $cxwStatus . ". run_ABCPM quitting.\n" unless $cxwStatus == 0;
+	my $cxwStatus = system("createxwalks.py");
+	die "createxwalks finished with non-zero exit code: " . $cxwStatus . ". run_ABCPM quitting.\n" unless $cxwStatus == 0;
 	
 	#next, loop over settings:
 	SETTLOOP: foreach my $sett (sort keys %settings)

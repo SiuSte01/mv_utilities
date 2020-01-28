@@ -46,6 +46,7 @@ libname claim '.';
 libname profile oracle user = claims_usr password = claims_usr123 path = PLDWH2DBR SCHEMA = profileData;
 
 /* Select POIDs with valid claims */
+/* Advisory Board uses NJIPA, CAIPA, AZIPA - Added these in */
 proc sql;
   connect to oracle( user = &USERNAME password = &PASSWORD path = &INSTANCE);
   
@@ -60,7 +61,7 @@ proc sql;
            and a.load_batch <= v.last_vend_batch   
            and h.id_type='POID'
            and ( to_date(%unquote(%str(%'&Vintage%')), 'YYYYMMDD' ) between h.start_date and h.end_date )
-           and ( ( v.vendor_code in ('CMSIP','AZIP','TXIP','NVIP','NYIP','FLIP','WAIP','NJIP','CAIP') ) 
+           and ( ( v.vendor_code in ('CMSIP','AZIP','AZIPA','TXIP','NVIP','NYIP','FLIP','WAIP','NJIP','NJIPA','CAIP','CAIPA') ) 
                        or ( v.vendor_code='WK' and b.classification_code='011' ) ) );
   disconnect from oracle;
   quit;

@@ -37,6 +37,7 @@ libname profile oracle user = claims_usr password = claims_usr123 path = PLDWH2D
 
 /* Get POIDs with Claims */
 /* For CA, pick POIDs that show up in both IP and OP claims - these are hospitals */
+/* Advisory Board uses CAOPA, NJOPA states - added these in */ 
 proc sql;
   connect to oracle ( user = &USERNAME password = &PASSWORD path = &INSTANCE );
   
@@ -51,10 +52,10 @@ proc sql;
          and a.load_batch <= v.last_vend_batch
          and h.id_type='POID'
          and (to_date(%unquote(%str(%'&Vintage%')),'YYYYMMDD') between h.start_date and h.end_date)
-         and ( (v.vendor_code = 'CMSOP') or (v.vendor_code in ('WK','FLOP','NYOP','NJOP') and b.classification_code='013' ) )
+         and ( (v.vendor_code = 'CMSOP') or (v.vendor_code in ('WK','FLOP','NYOP','NJOP','NJOPA') and b.classification_code='013' ) )
                          
      union
-       ( select distinct HMS_POID, 'CAOP' as vendor_code from
+       ( select distinct HMS_POID, 'CAOPA' as vendor_code from
 
 	      ( select distinct h.id_value as HMS_POID
               from claimswh.inst_claims a
@@ -65,7 +66,7 @@ proc sql;
                 and a.load_batch <= v.last_vend_batch
                 and h.id_type='POID'
                 and ( to_date(%unquote(%str(%'&Vintage%')), 'YYYYMMDD' ) between h.start_date and h.end_date )
-                and v.vendor_code ='CAOP'
+                and v.vendor_code in ( 'CAOP', 'CAOPA' )
                        
             intersect
 
@@ -78,7 +79,7 @@ proc sql;
                 and a.load_batch <= v.last_vend_batch
                 and h.id_type='POID'
                 and ( to_date(%unquote(%str(%'&Vintage%')),'YYYYMMDD' ) between h.start_date and h.end_date )
-                and v.vendor_code ='CAIP') ) );
+                and v.vendor_code in ( 'CAIP', 'CAIPA' ) ) ) );
   disconnect from oracle;
   quit;
 %put &sqlxmsg;

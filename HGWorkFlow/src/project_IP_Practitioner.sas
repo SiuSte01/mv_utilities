@@ -154,7 +154,7 @@ data _null_;
    in order to run different code depending on values of variables that are set in input.txt */ 
 %macro complete_ip_projection();
 
-  /* Get raw data from wkub, wkmx, cms, and state */
+  /* Get raw data from wkub, wkmx, cms, and state - adding NJ here 9/25/2019 since Advisory Board can now get counts */
   %count(src=WKUB, aggrname='WKUB_IP');
   %count(src=WKMX, aggrname='WKMX_IP');
   %count(src=CMS,  aggrname='CMS_IP');
@@ -162,6 +162,8 @@ data _null_;
   %count(src=FL,   aggrname='FL_IP');
   %count(src=WA,   aggrname='WA_IP');
   %count(src=AZ,   aggrname='AZ_IP');
+  %count(src=NJ,   aggrname='NJ_IP');
+
   
   /* Create "migs" version of dataset where if PIID is labeled as MISSING, set it to MISSINGDOC 
      Set state data together into one dataset */
@@ -181,7 +183,7 @@ data _null_;
     run;
 
   data claim.state_ip_migs;
-    set claim.az_ip claim.fl_ip claim.ny_ip claim.wa_ip;
+    set claim.az_ip claim.fl_ip claim.ny_ip claim.wa_ip claim.nj_ip; /* Adding NJ here 9/25/2019 since Advisory Board can now get counts */
     if hms_piid='MISSING' then hms_piid='MISSINGDOC';
     run;
 	
@@ -238,8 +240,8 @@ data _null_;
        /***note 12/22/2016: HG aggregation use 'MISSING' instead of 'NULL'***/
   %if %upcase( &Filter1500Specialty ) = Y %then %do;
 
-    /* Get observations from WK 1500 (professional) claims where PIID is not missing and speciality does not contain key words. Sort by POID, PIID. 
-            4/30/2019: Removed reference to specific POID that was excluded	*/
+    /* Get observations from WK 1500 (professional) claims where PIID is not missing and speciality does not contain key words. 
+	   Sort by POID, PIID. 4/30/2019: Removed reference to specific POID that was excluded	*/
     proc sql;
       create table wkmx_ip_migs as select a.*
         from claim.wkmx_ip_migs a, fxfiles.indivspec_&Vintage b
@@ -922,3 +924,39 @@ data _null_;
 
 %complete_ip_projection();
 
+
+
+/* MODIFICATION 3.18.2018: New file formats */
+
+data temp;
+set output2;
+if HMS_POID = '' then HMS_POID = 'MISSING';
+if HMS_PIID = '' then HMS_PIID = 'MISSING';
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID / missing;
+var PractFacProjCount;
+output out=prac_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_POID / missing;
+var PractFacProjCount;
+output out=org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID HMS_POID / missing;
+var PractFacProjCount;
+output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc export data=prac_proj outfile='prac_proj.txt' replace;
+run;
+proc export data=org_proj outfile='org_proj.txt' replace;
+run;
+proc export data=prac_org_proj outfile='prac_org_proj.txt' replace;
+run;
+
+/* **************************************** END OF LINE *************************************** */

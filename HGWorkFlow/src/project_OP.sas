@@ -129,7 +129,7 @@ quit ;
 %piidcnt(src=CMS,  aggrname='CMS_OP');
 %piidcnt(src=NY,   aggrname='NY_OP');
 %piidcnt(src=FL,   aggrname='FL_OP');
-
+%piidcnt(src=NJ,   aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's aggrement allows them to report counts */
 
 data claim.WKUB_op_migs;
 set claim.WKUB_op;
@@ -144,7 +144,7 @@ set claim.CMS_op;
 if hms_piid='MISSING' then hms_piid='MISSINGDOC';
 run;
 data claim.state_op_migs;
-set claim.fl_op claim.ny_op ;
+set claim.fl_op claim.ny_op claim.nj_op;
 if hms_piid='MISSING' then hms_piid='MISSINGDOC';
 run;
 quit;
@@ -207,21 +207,14 @@ quit;
 %poidcnt(src=FL, 	aggrname='FL_OP');
 %poidcnt(src=NY, 	aggrname='NY_OP');
 %poidcnt(src=CA,    aggrname='CA_OP');
+%poidcnt(src=NJ,    aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's aggrement allows them to report counts */
 %poidcnt(src=WKMX,  aggrname='WKMX_OP');
 %poidcnt(src=WKUB,  aggrname='WKUB_OP');
 
-%if %upcase(&CODETYPE) EQ CPM or %upcase(&CODETYPE) EQ AB %then %do;
+/*CA and NJ now only available for AB (all other aggregations will be empty), so removing conditional logic and adding NJ */
 data claim.state_op_poid_migs;
-set claim.fl_op_poid_migs claim.ny_op_poid_migs ;
+set claim.fl_op_poid_migs claim.ny_op_poid_migs claim.ca_op_poid_migs claim.nj_op_poid_migs;
 run;
-%end;
-
-%else %do;
-data claim.state_op_poid_migs;
-set claim.fl_op_poid_migs claim.ny_op_poid_migs claim.ca_op_poid_migs;
-run;
-%end;
-
 
 /***change: 12/16/2016 do poid level first to determine which source to use at piidpoid level**/
 
@@ -650,26 +643,15 @@ run;
 
 
 /****change: not include wkmx at facility level****/;
-
-%if %upcase(&CODETYPE) EQ CPM or %upcase(&CODETYPE) EQ AB %then %do;
+/* Removing conditional logic so that AB gets CA - since no other clients will have CA data, this will have no effect.  
+   Also adding NJ which will only affect AB. */
 data claim.state_payer;
-set  claim.ny_payer claim.fl_payer  ;
+set claim.ny_payer claim.fl_payer claim.ca_payer claim.nj_payer;
 run;
 
 proc sort data=claim.state_payer ;
 by hms_poid ;
 run;
-%end;
-
-%else %do;
-data claim.state_payer;
-set  claim.ny_payer claim.fl_payer  claim.ca_payer;
-run;
-
-proc sort data=claim.state_payer ;
-by hms_poid ;
-run;
-%end;
 
 data claim.facility_counts_output(keep=hms_poid claim_dlvry);
 merge proj_cms
@@ -1560,23 +1542,11 @@ proc sort data=claim.wkub_payer(where=(hms_poid^='MISSING')) out=wk_op;
 by hms_poid;
 run;
 
-/* Only include CA claims for CPM and AB jobs */
-%macro state_payer;
-
-%if %upcase(&CODETYPE) EQ CPM or %upcase(&CODETYPE) EQ AB %then %do;
-data claim.state_payer;
-set claim.nj_payer claim.ny_payer claim.fl_payer ;
-run;
-%end;
-%else %do;
+/* Only include CA claims for CPM and AB jobs - this comment did not align with code
+   CA and NJ now only available for AB (all other aggregations will be empty), so removing conditional logic */
 data claim.state_payer;
 set claim.nj_payer claim.ny_payer claim.fl_payer claim.ca_payer;
 run;
-%end;
-
-%mend;
-
-%state_payer;
 
 proc sort data=claim.state_payer(where=(hms_poid^='MISSING')) out=state_op;
 by hms_poid;
@@ -2110,3 +2080,39 @@ run;
 
 %error_choose;
 
+
+
+/* MODIFICATION 3.18.2018: New file formats */
+
+data temp;
+set output2;
+if HMS_POID = '' then HMS_POID = 'MISSING';
+if HMS_PIID = '' then HMS_PIID = 'MISSING';
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID / missing;
+var PractFacProjCount;
+output out=prac_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_POID / missing;
+var PractFacProjCount;
+output out=org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID HMS_POID / missing;
+var PractFacProjCount;
+output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc export data=prac_proj outfile='prac_proj.txt' replace;
+run;
+proc export data=org_proj outfile='org_proj.txt' replace;
+run;
+proc export data=prac_org_proj outfile='prac_org_proj.txt' replace;
+run;
+
+/* **************************************** END OF LINE *************************************** */

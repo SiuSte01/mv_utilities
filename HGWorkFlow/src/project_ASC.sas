@@ -1258,7 +1258,8 @@ create table check5 as select count(*) as training_count from check4;
 quit;
 data _null_;
 set check5;
-if training_count = 0 then call symput('do_ptb_projection','no');
+/* MODIFICATION 10.01.2019: also check for existence of cap value for specific situations */
+if training_count = 0 or %symexist(Cap) = 0 then call symput('do_ptb_projection','no');
 run;
 %put do_ptb_projection = &do_ptb_projection;
 
@@ -1828,4 +1829,37 @@ run;
 proc export data=ASC.asc_projections outfile='asc_projections.txt' replace;
 run;
 
-/* ***************************************** END OF LINE ************************************** */
+/* MODIFICATION 3.18.2018: New file formats */
+
+data temp;
+set ASC.asc_projections;
+if HMS_POID = '' then HMS_POID = 'MISSING';
+if HMS_PIID = '' then HMS_PIID = 'MISSING';
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID / missing;
+var PractFacProjCount;
+output out=prac_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_POID / missing;
+var PractFacProjCount;
+output out=org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID HMS_POID / missing;
+var PractFacProjCount;
+output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc export data=prac_proj outfile='prac_proj.txt' replace;
+run;
+proc export data=org_proj outfile='org_proj.txt' replace;
+run;
+proc export data=prac_org_proj outfile='prac_org_proj.txt' replace;
+run;
+
+/* **************************************** END OF LINE *************************************** */

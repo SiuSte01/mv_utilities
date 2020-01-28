@@ -1198,16 +1198,16 @@ data mylib.POID_Prediction_GLM;
 set mylib.POID_Prediction_GLM;
 
 /* Nevada and TX state claims data does not allow us to vend their data to our customers */
-/* Also NJ after switching to HCUP purchase for 2012 data onwards */
+/* Also NJ after switching to HCUP purchase for 2012 data onwards - removing NJ 9/25/2019 based on Advisory Board acquisition of data */
 /* Set delivery to allpayer or CMS total count if no prediction can be made due to missing predictor variables */
 if claim_pred_GLM = . then do;
-	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then claim_dlvry = State_total_4d;
+	if State_valid = 1 and NOT(State_source in ('NV','TX')) then claim_dlvry = State_total_4d;
 	else if WK_valid = 1 then claim_dlvry = WK_total_4d;
 	else if CMS_valid = 1 then claim_dlvry = CMS_total_4d;
 	else claim_dlvry = 0;
 end;
 else do;
-	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry = State_total_4d;
+	if State_valid = 1 and NOT(State_source in ('NV','TX')) then  claim_dlvry = State_total_4d;
 	else if WK_valid = 1 then claim_dlvry = WK_total_4d;
 	/* constrain delivery to be at least equal to allpayer or CMS total count */
 	else if CMS_valid = 1 then claim_dlvry = max(CMS_total_4d,claim_pred_GLM);

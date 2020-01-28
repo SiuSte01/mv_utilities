@@ -10,9 +10,11 @@ use Cwd;
 my $scriptDir;
 my $libDir;
 my $aggrDir;
+my $envName;
 my $codeDir;
 BEGIN
 {
+	$envName = "perl_utilities";
 	$scriptDir = Cwd::abs_path(dirname($0));
 	my $lib = dirname($scriptDir);
 	if($lib =~ m/mv_utilities/)
@@ -25,6 +27,9 @@ BEGIN
 	else
 	{
 		$lib = `conda info -e | grep '*'`;
+		$envName = $lib;
+		$envName =~ s/\*.*//;
+		$envName =~ s/^\s+|\s+$//g;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
 		my $sitePath = `python -m site | grep $lib | grep site-packages`;
@@ -58,18 +63,15 @@ GetOptions(
 die "-config parameter is required\n" unless $config;
 
 #MiscFunctions::setEnv();
-system("which createxwalks.py");
+#system("which createxwalks.py");
 
 my $settingVars = MiscFunctions::createSettingHash(config=>$config);
 my $jvsTab = "config/jobVendorSettings.tab";
 my $cgrTab = "config/codeGroupRules.tab";
 my $cgmTab = "config/codeGroupMembers.tab";
-my $codeBase = $settingVars->{"CODE_BASE"}[0];
 
-$ENV{CODEBASE} = uc($codeBase);
 my $rootLoc = getcwd();
 my $codeRepo = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow";
-#my $codeDir = $codeRepo . "/" .  $codeBase;
 my $projections = "Projections";
 my $codes = "codes";
 my $runComb = 0;
@@ -300,6 +302,18 @@ sub runQCStep
 
 sub readInputs
 {
+	if($settingVars->{"FXFILES"}[0] ne "NULL" && $settingVars->{"FXFILES"}[0] =~ m/\//)
+	{
+		die "FXFILES has a '/' character. FXFILES cannot be a path and must be a suffix or null. multiBucket quitting\n";
+	}
+	if(lc($envName) eq "master" && $settingVars->{"FXFILES"}[0] ne "NULL")
+	{
+		die "FXFILES must be null when running multiBucket in the " . $envName . " environment\n";
+	}
+	elsif(lc($envName) ne "master" && $settingVars->{"FXFILES"}[0] eq "NULL")
+	{
+		die "FXFILES cannot be null when running multiBucket in the " . $envName . " environment\n";
+	}
 	$memoryHash->{"JVS_RAW"} = MiscFunctions::fillDataHashes(file=>$jvsTab,hashKey=>\@jvsKey);
 	$memoryHash->{"CGR_RAW"} = MiscFunctions::fillDataHashes(file=>$cgrTab,hashKey=>\@cgrKey);
 	$memoryHash->{"CGM_RAW"} = MiscFunctions::fillDataHashes(file=>$cgmTab,hashKey=>\@cgmKey);

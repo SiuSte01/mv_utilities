@@ -937,4 +937,38 @@ run;
 /* Choose a Print Macro */
 %Print_&do_ptb_projection.();
 
+
+/* MODIFICATION 3.18.2018: New file formats */
+
+data temp;
+set Office.All_&Counting._PRED;
+if HMS_POID = '' then HMS_POID = 'MISSING';
+if HMS_PIID = '' then HMS_PIID = 'MISSING';
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID / missing;
+var FINAL_EST_TOTAL;
+output out=prac_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_POID / missing;
+var FINAL_EST_TOTAL;
+output out=org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc means data=temp nway sum noprint;
+class HMS_PIID HMS_POID / missing;
+var FINAL_EST_TOTAL;
+output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+
+proc export data=prac_proj outfile='prac_proj.txt' replace;
+run;
+proc export data=org_proj outfile='org_proj.txt' replace;
+run;
+proc export data=prac_org_proj outfile='prac_org_proj.txt' replace;
+run;
+
 /* **************************************** END OF LINE *************************************** */

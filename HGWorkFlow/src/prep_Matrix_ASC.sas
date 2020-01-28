@@ -66,7 +66,7 @@ proc sql ;
    ( select distinct d.Vendor_Code, b.Facility_ID, b.Bill_Classification_ID, c.ID_TYPE, c.ID_VALUE
 	   from claimswh.inst_claims b, claimswh.facility_id_crosswalk c, claims_aggr.job_vendors d
 	   where b.FACILITY_ID = c.FACILITY_ID
-		    and b.vendor_id = d.vendor_id and d.vendor_code in ('CAOP','CAIP')
+		    and b.vendor_id = d.vendor_id and d.vendor_code in ('CAOPA','CAIPA','CAOP','CAIP')
             and d.job_id = &AGGREGATION_ID
 		    and b.LOAD_BATCH <= d.LAST_VEND_BATCH
 		    and ( b.CLAIM_THROUGH_DATE between d.FIRST_VEND_DATE and d.LAST_VEND_DATE )
@@ -95,7 +95,7 @@ data NYFL_claims;
 /* For CA - If OP and not IP then keep */
 data CAOP_claims;
   set CA_claims;
-  where Vendor_Code = 'CAOP';
+  where Vendor_Code in ( 'CAOP', 'CAOPA' );
 
   if ID_VALUE = 'NULL' then delete;
   else if ID_TYPE ~= 'POID' then delete;
@@ -103,7 +103,7 @@ data CAOP_claims;
   
 data CAIP_claims;
   set CA_claims;
-  where Vendor_Code = 'CAIP';
+  where Vendor_Code in ( 'CAIPA', 'CAIP' );
 
   if ID_VALUE = 'NULL' then delete;
   else if ID_TYPE ~= 'POID' then delete;
