@@ -37,7 +37,7 @@ BEGIN
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
 		$aggrDir = $sitePath . "/aggr";
-		$codeDir = $sitePath . "/HGWorkFlow/src";
+		$codeDir = $sitePath . "/projCode/src";
 	}
 }
 use lib $libDir;
@@ -71,7 +71,7 @@ my $cgrTab = "config/codeGroupRules.tab";
 my $cgmTab = "config/codeGroupMembers.tab";
 
 my $rootLoc = getcwd();
-my $codeRepo = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow";
+my $codeRepo = "/vol/cs/clientprojects/mv_utilities/projCode";
 my $projections = "Projections";
 my $codes = "codes";
 my $runComb = 0;
@@ -194,7 +194,14 @@ sub executeBothProcesses
 sub runProjectionsStep
 {
 	my $fxFiles = $codeRepo . "/";
-	$fxFiles .= $settingVars->{"FXFILES"}[0] ne "NULL" ? "InputDataFiles_NewWH_" . $settingVars->{"FXFILES"}[0] : "InputDataFiles_NewWH";
+	if($settingVars->{"FXFILES"}[0] eq "NULL")
+	{
+		$fxFiles .= "InputDataFiles/" . $envName;
+	}
+	else
+	{
+		$fxFiles .= "InputDataFiles/" . $settingVars->{"FXFILES"}[0];
+	}
 	system("mkdir","-p",$fxFiles);
 	my @reqFiles = qw/ahd_beds_nodup.sas7bdat aha_demo.sas7bdat covar_under65.sas7bdat covar_county_unemp.sas7bdat covar_ma_penetration.sas7bdat covar_hi_expend.sas7bdat CMS_ASC_ProcedureData.txt HospitalExclusionList.tab ins_mapenet.sas7bdat mdsi_bedcount_audit.sas7bdat test_u65byhsa.sas7bdat xwalk_zip.sas7bdat zip2fips.sas7bdat/;
 	print $fxFiles . "\n";
@@ -202,7 +209,7 @@ sub runProjectionsStep
 	{
 		unless(-e $fxFiles . "/" . $x)
 		{
-			system("cp " . $codeRepo . "/InputDataFiles_NewWH/" . $x . " " . $fxFiles . "/" . $x);
+			system("cp " . $codeRepo . "/InputDataFiles/master/" . $x . " " . $fxFiles . "/" . $x);
 		}
 	}
 	my $cxwStatus = system("createxwalks.py");
@@ -306,13 +313,9 @@ sub readInputs
 	{
 		die "FXFILES has a '/' character. FXFILES cannot be a path and must be a suffix or null. multiBucket quitting\n";
 	}
-	if(lc($envName) eq "master" && $settingVars->{"FXFILES"}[0] ne "NULL")
+	if(lc($settingVars->{"FXFILES"}[0]) eq "master")
 	{
-		die "FXFILES must be null when running multiBucket in the " . $envName . " environment\n";
-	}
-	elsif(lc($envName) ne "master" && $settingVars->{"FXFILES"}[0] eq "NULL")
-	{
-		die "FXFILES cannot be null when running multiBucket in the " . $envName . " environment\n";
+		die "FXFILES cannot be set to master\n";
 	}
 	$memoryHash->{"JVS_RAW"} = MiscFunctions::fillDataHashes(file=>$jvsTab,hashKey=>\@jvsKey);
 	$memoryHash->{"CGR_RAW"} = MiscFunctions::fillDataHashes(file=>$cgrTab,hashKey=>\@cgrKey);

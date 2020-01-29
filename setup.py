@@ -9,18 +9,18 @@ setup(name='mvUtil',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
-			'HGWorkFlow/src': ['dopatients.pl','multiBucket_ABCPM.pl','project_PAC.pl','sendemail.pl','*.sas'],
-				'HGWorkFlow/src/AdvisoryBoard': ['*'],
-				'HGWorkFlow/src/INA': ['*'],
-				'HGWorkFlow/src/INAA': ['*'],
-				'HGWorkFlow/src/Trending': ['*'],
+			'projCode/src': ['dopatients.pl','multiBucket_ABCPM.pl','project_PAC.pl','sendemail.pl','*.sas'],
+				'projCode/src/AdvisoryBoard': ['*'],
+				'projCode/src/INA': ['*'],
+				'projCode/src/INAA': ['*'],
+				'projCode/src/Trending': ['*'],
 		},
       packages=[
-			'HGWorkFlow/src',
-				'HGWorkFlow/src/AdvisoryBoard',
-				'HGWorkFlow/src/INA',
-				'HGWorkFlow/src/INAA',
-				'HGWorkFlow/src/Trending'
+			'projCode/src',
+				'projCode/src/AdvisoryBoard',
+				'projCode/src/INA',
+				'projCode/src/INAA',
+				'projCode/src/Trending'
 			#	'aggr/cloneAggr',
 			#	'aggr/ina',
 			#		'aggr/ina/filter',
@@ -30,7 +30,7 @@ setup(name='mvUtil',
 			#		'aggr/pxdx/buildAllCodesExact'
 			],
       scripts=[
-			'HGWorkFlow/src/multiBucket.pl',
-			'HGWorkFlow/src/run_ABCPM.pl'
+			'projCode/src/multiBucket.pl',
+			'projCode/src/run_ABCPM.pl'
 			],
       zip_safe=False)
