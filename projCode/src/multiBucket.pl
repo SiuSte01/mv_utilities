@@ -14,7 +14,6 @@ my $envName;
 my $codeDir;
 BEGIN
 {
-	$envName = "perl_utilities";
 	$scriptDir = Cwd::abs_path(dirname($0));
 	my $lib = dirname($scriptDir);
 	if($lib =~ m/mv_utilities/)
@@ -27,9 +26,6 @@ BEGIN
 	else
 	{
 		$lib = `conda info -e | grep '*'`;
-		$envName = $lib;
-		$envName =~ s/\*.*//;
-		$envName =~ s/^\s+|\s+$//g;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
 		my $sitePath = `python -m site | grep $lib | grep site-packages`;
@@ -39,6 +35,9 @@ BEGIN
 		$aggrDir = $sitePath . "/aggr";
 		$codeDir = $sitePath . "/projCode/src";
 	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
 }
 use lib $libDir;
 use MiscFunctions;
