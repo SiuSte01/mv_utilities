@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
 
-foreach my $f (glob("/vol/cs/clientprojects/mv_utilities/HGWorkFlow/src/*pl /vol/cs/clientprojects/mv_utilities/HGWorkFlow/src/*sas"))
+foreach my $f (glob("/vol/cs/clientprojects/mv_utilities/projCode/src/*pl /vol/cs/clientprojects/mv_utilities/projCode/src/*sas"))
 {
 	print $f . "\n";
 	my @z = split("\/",$f);
 	print $z[$#z] . "\n";
 	
-	my $p = "/vol/cs/clientprojects/mv_utilities/HGWorkFlow/src/" . $z[$#z];
+	my $p = "/vol/cs/clientprojects/mv_utilities/projCode/src/" . $z[$#z];
 	my $d = "/vol/datadev/Statistics/Projects/HGWorkFlow/Prod_NewWH/" . $z[$#z];
 	if(-e $p && -e $d)
 	{
