@@ -34,27 +34,25 @@ BEGIN
 use lib $libDir;
 use MiscFunctions;
 
-#usage perl /vol/datadev/Statistics/Projects/HGWorkFlow/Dev/multiBucket_ABCPM.pl AB|CPM IP|OP|Freestanding|OfficeASC|SNF  Dev|Prod_NewWH
+#usage perl /vol/cs/clientprojects/mv_utilities/projCode/src/multiBucket_ABCPM.pl AB|CPM IP|OP|Freestanding|OfficeASC|SNF  Dev|Prod_NewWH
 #looks for a file called buckets.txt in current directory
 #optionally can have donotproject.txt in current dir with list of buckets
 # to not project for IP and OP at present
 
 my $npar=scalar(@ARGV);
-my ($jobtype,$setting,$codebase);
-if($npar==3)
+my ($jobtype,$setting);
+if($npar==2)
 {
 	$jobtype=$ARGV[0];
 	$setting=$ARGV[1];
-	$codebase=$ARGV[2];
 }
 else
 {
-	print "\tspecify exactly 3 parameters on command line\n";
+	print "\tspecify exactly 2 parameters on command line\n";
 	exit;
 }
 
-$ENV{CODEBASE}=uc $codebase;
-my $codedir = "/vol/datadev/Statistics/Projects/HGWorkFlow/$codebase";
+my $codedir = "/vol/cs/clientprojects/mv_utilities/projCode/src";
 
 my $memoryHash;
 
