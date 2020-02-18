@@ -103,9 +103,10 @@ libname fxfiles %unquote(%str(%'&FXFILES%'));
 /* MODIFICATION 6/22/2016: remove some variables related to medicare */
 /* MODIFICATION 3/23/2016: further remove some medicaid variables for All-codes jobs */
 /* MODIFICATION 5/25/2017: remove variables based on VARCLUS analysis */
+/* MODIFICATION 1/28/2020: Remove MType and MAPP6 since no longer available in AHA file */
 data _NULL_;
-   call symput ("catvars_GLMSel", cat("MType RESP CHC COMMTY LOS ",
-									  "MAPP1 MAPP2 MAPP3 MAPP5 MAPP6 MAPP7 MAPP8 ",
+   call symput ("catvars_GLMSel", cat("RESP CHC COMMTY LOS ",
+									  "MAPP1 MAPP2 MAPP3 MAPP5 MAPP7 MAPP8 ",
 									  "MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 MAPP19 MAPP20 ")); 
 if "&Codetype." = "ALL" then do;
 /*   call symput ("numvars_Partial", cat("TactInsField Unemp ",
@@ -652,8 +653,8 @@ run;
 /* Identify rows with no categorical/numerical AHA/MDSI/bed data */
 data mylib.POID_Counts;
 set mylib.POID_Counts;
-if MType='' and RESP='' and CHC='' and COMMTY='' and LOS='' and MAPP1=''
-and MAPP2='' and MAPP3='' and MAPP5='' and MAPP6='' and MAPP7='' and
+if RESP='' and CHC='' and COMMTY='' and LOS='' and MAPP1=''
+and MAPP2='' and MAPP3='' and MAPP5='' and MAPP7='' and
 MAPP8='' and MAPP11='' and MAPP12='' and MAPP13='' and MAPP16='' and
 MAPP18='' and MAPP19='' and MAPP20='' then AHA_Cat_Empty = 1;
 else AHA_Cat_Empty = 0;

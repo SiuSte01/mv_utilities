@@ -742,7 +742,7 @@ rename RANK1ZIP = ZIP;
 run;
 
 /* Merge in covariates */
-proc sort data=Inputs.xwalk_zip nodupkey out=zips(keep=ZIP FIPS);
+proc sort data=Inputs.zip2fips nodupkey out=zips(keep=ZIP FIPS);
 by ZIP;
 run;
 proc sort data=Office.ALL_&Counting._PIID out=temp;

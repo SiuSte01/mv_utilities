@@ -3,7 +3,9 @@ PROGRAM NAME:				Poid_Prep.sas
 PURPOSE:					Prepare poid attributes for IP & OP Facility Projections
 PROGRAMMER:					Mark Piatek
 CREATION DATE:				05/01/2017
-UPDATED:					
+UPDATED:					10/21/2016: Removed WebSearch Beds 
+                            01/28/2020 - Removed references to MAPP6 and MType in AHA File since no longer available
+											also removed use of other bed sources since out of date
 NOTES:						
 INPUT FILES:				
 OUTPUT FILES:				POID_attributes.sas
@@ -73,14 +75,7 @@ end;
 
 run;
 
-/* figure out the MDSI table name from the vintage */
-data _null_ ;
-demo=catt("idngpo_",substr(compress(&used_vintage), 5, 4),"_demographics");
-call symput('MDSI_table',demo);
-run;
-
 %put 'Vintage: ' &used_vintage;
-%put 'MDSI Table Name:' &MDSI_table;
 %put 'FXFILES:' &fxfiles;
 %put 'PROJDIR:' &projdir;
 %put 'INSTANCE:' &instance;
@@ -95,48 +90,22 @@ run;
 
 libname fxfiles %unquote(%str(%'&FXFILES%'));
 libname projdir %unquote(%str(%'&PROJDIR%'));
-%let AHD_bed_table = fxfiles.AHD_Beds_NoDup;
-*%let Web_bed_table = fxfiles.WebSearch_Beds;
-
-/* MODIFICATION 9/20/2016: Read in MDSI POIDs list (reduced) and migrate, add to data */
-/* MDSI Data is not good, but we lose too many POIDs, so we only retain "valid" hospitals */
-proc sort data=fxfiles.MDSI_bedcount_audit out=audit_mdsi;
-by HMS_POID;
-run;
-proc sort data=fxfiles.poidmigration_lookup_&used_vintage. out=migr;
-by HMS_POID;
-run;
-
-data matrloc.MDSI_Data_Mig;
-merge audit_mdsi(in=a) migr;
-by HMS_POID;
-if a;
-if POID_MIGRATION_STATUS = 'MOVED' then HMS_POID = new_poid;
-drop POID_MIGRATION_STATUS new_poid;
-run;
-/* END MODIFICATION */
 
 proc sort data=matrloc.ip_Datamatrix out=matrloc.AHA_Data_v3_Mig;
 by HMS_POID;
 run;
 
-/* join AHA and MDSI tables */
-proc sort data=matrloc.AHA_Data_v3_Mig;
-by HMS_POID;
-run;
-proc sort data=matrloc.MDSI_Data_Mig;
-by HMS_POID;
-run;
-data matrloc.POID_AHA_MDSI;
-merge matrloc.AHA_Data_v3_Mig(In=Matrix) matrloc.MDSI_Data_Mig(In=MDSI);
-by HMS_POID;
-if Matrix=1;
-if Matrix=1 then Matrix_Listed=1;
-else Matrix_Listed=0;
+data matrloc.POID_Beds;
+set matrloc.AHA_Data_v3_Mig;
+
+Matrix_Listed=1;
+MDSI_Listed = 0; /* Always zero since removing use of this as of 1/28/2020 */
+AHD_Beds = .; /* No longer using AHD data as of 1/28/2020 */
+
 /* set AHA_Listed to 1 if any AHA data exists */
-if SERV ~= '' or MType ~= '' or RESP ~= '' or CHC ~= '' or COMMTY ~= ''
+if SERV ~= '' or RESP ~= '' or CHC ~= '' or COMMTY ~= ''
 or LOS ~= '' or MAPP1 ~= '' or MAPP2 ~= '' or MAPP3 ~= '' or MAPP5 ~= ''
-or MAPP6 ~= '' or MAPP7 ~= '' or MAPP8 ~= '' or MAPP11 ~= '' or MAPP12 ~= ''
+or MAPP7 ~= '' or MAPP8 ~= '' or MAPP11 ~= '' or MAPP12 ~= ''
 or MAPP13 ~= '' or MAPP16 ~= '' or MAPP18 ~= '' or MAPP19 ~= '' or MAPP20 ~= ''
 or HOSPBD ~= . or BDTOT ~= . or BIRTHS ~= . or SUROPIP ~= . or SUROPOP ~= .
 or SUROPTOT ~= . or ADMTOT ~= . or IPDTOT NE . or MCRDC ~= . or MCRIPD ~= .
@@ -144,24 +113,13 @@ or MCDDC ~= . or MCDIPD ~= . or VEM ~= . or VOTH ~= . or VTOT ~= . or
 FTMDTF ~= . or FTRES ~= . or FTRNTF ~= . or ADC ~= . or ADJADM ~= . or ADJPD ~= .
 then AHA_Listed = 1;
 else AHA_Listed = 0;
-if MDSI=1 then MDSI_Listed = 1;
-else MDSI_Listed = 0;
+
 run;
 
-proc freq data=matrloc.POID_AHA_MDSI;
+/* Should now be always zero for MDSI Listed */
+proc freq data=matrloc.POID_Beds;
 tables AHA_Listed*MDSI_Listed / list missing;
 run;
-
-/* add AHD beds to POIDs */
-proc sql;
-create table matrloc.POID_Beds
-as
-select aha.*, bed.AHD_Beds
-from matrloc.POID_AHA_MDSI aha
-left join &AHD_bed_table. bed
-on aha.hms_poid=bed.hms_poid;
-quit;
-/* MODIFICATION 10/21/2016: Removed WebSearch Beds */
 
 /* read POID class table from Oracle */
 proc sql;
@@ -444,79 +402,52 @@ run;
 /* Pick bedsize in priority order */
 data matrloc.POID_Imputed;
 set matrloc.POID_Imputed_Tact;
-/* MODIFICATION 4.26.2017 - Because of new audit dataset, bed source already exits */
-*length Bed_Source $ 4;
-if Bed_Source = '' then do;
-	Bed_Source = 'None';
-	if HospBd ~= . and HospBd > 0 then do;
-		Adj_Beds = HospBd;
-		Bed_Source = 'AHA';
-	end;
-	else if BdTot ~= . and HospBd > 0 then do;
-		Adj_Beds = BdTot;
-		Bed_Source = 'AHA';
-	end;
-	else if AHD_Beds ~= . and AHD_Beds > 0 then do;
-		Adj_Beds = AHD_Beds;
-		Bed_Source = 'AHD';
-	end;
-end;
-else if /*MDSI_Beds*/ Bed_count ~= . and /*MDSI_Beds*/ Bed_count > 0 then do;
-	Adj_Beds = /*MDSI_Beds*/ Bed_count;
-	Bed_Source = 'MDSI';
-end;
-*else if Web_Beds ~= . then do;
-*	Adj_Beds = Web_Beds;
-*	Bed_Source = 'Web';
-*end;
-drop Bed_count;
-run;
+/* MODIFICATION 4.26.2017 - Because of new audit dataset, bed source already exits 
+   MODIFICATION 1.28.2020 - Removal of MDSI and AHD means AHA or None are the only values */
+length Bed_Source $ 4;
+Bed_Source = 'None';
+if HospBd ~= . and HospBd > 0 then do;
+    Adj_Beds = HospBd;
+    Bed_Source = 'AHA';
+  end;
+else if BdTot ~= . and HospBd > 0 then do;
+	Adj_Beds = BdTot;
+	Bed_Source = 'AHA';
+  end;
 
-/* Adjust AHA values with MDSI data if they are missing */
-data matrloc.POID_Imputed;
-set matrloc.POID_Imputed;
 if Births ~= . then Adj_Births = Births;
-*else Adj_Births = EstBirths;
 if SurOpIP ~= . then Adj_SurOpIP = SurOpIP;
-*else Adj_SurOpIP = IPSurge;
 if SurOpOP ~= . then Adj_SurOpOP = SurOpOP;
-*else Adj_SurOpOP = OPSurge;
 if AdmTot ~= . then Adj_AdmTot = AdmTot;
-*else Adj_AdmTot = AdmTotal;
-if VEM NE . then Adj_VEM = VEM;
-*else Adj_VEM = ERV_NA + ERV_A;
+if VEM ~= . then Adj_VEM = VEM;
 if ADC ~= . then Adj_ADC = ADC;
-*else Adj_ADC = Beds_C;
 run;
 
-/* Estimate AHA categorical attributes based on bed decile */
-proc freq data=matrloc.POID_Imputed;
+/* Estimate AHA categorical attributes based on bed decile - use proc rank to compute deciles */
+proc freq data = matrloc.POID_Imputed;
 tables Adj_Beds;
 run;
-/* Split POIDs to deciles based on output of preceding PROC FREQ */    
-data matrloc.POID_Imputed;
-set matrloc.POID_Imputed;
-if      Adj_Beds = .    then bed_decile = .;
-else if Adj_Beds <= 23  then bed_decile = 10;
-else if Adj_Beds <= 25  then bed_decile = 9;
-else if Adj_Beds <= 38  then bed_decile = 8;
-else if Adj_Beds <= 60  then bed_decile = 7;
-else if Adj_Beds <= 87  then bed_decile = 6;
-else if Adj_Beds <= 120 then bed_decile = 5;
-else if Adj_Beds <= 174 then bed_decile = 4;
-else if Adj_Beds <= 245 then bed_decile = 3;
-else if Adj_Beds <= 370 then bed_decile = 2;
-else bed_decile = 1;
+
+proc rank data = matrloc.POID_Imputed groups = 10 descending out = ranked;
+var Adj_Beds;
+ranks bed_decile;
 run;
 
-/* Mark Note: not bad deciling considering these are manually set,
-but deciles 7 & 8 need rebalancing. Why not use proc rank? */
+proc summary data = ranked nway nmiss;
+  class bed_decile;
+  var Adj_Beds;
+  output out = matrloc.Bed_Decile_Report ( drop = _TYPE_ rename = ( _FREQ_ = POID_Count ) )
+    min = Adj_Beds_Min
+    max = Adj_Beds_Max
+	sum = Adj_Beds_Total;
+  run;
 
 /* Identify POIDs with full AHA data and those with missing fields */
 data matrloc.POID_Imputed;
-set matrloc.POID_Imputed;
-if SERV='' or MType='' or RESP='' or CHC='' or COMMTY='' or LOS='' or MAPP1=''
-or MAPP2='' or MAPP3='' or MAPP5='' or MAPP6='' or MAPP7='' or MAPP8='' or MAPP11=''
+set ranked;
+bed_decile = bed_decile + 1; /* Offset so 10-1 instead of 9-0 */
+if SERV='' or RESP='' or CHC='' or COMMTY='' or LOS='' or MAPP1=''
+or MAPP2='' or MAPP3='' or MAPP5='' or MAPP7='' or MAPP8='' or MAPP11=''
 or MAPP12='' or MAPP13='' or MAPP16='' or MAPP18='' or MAPP19='' or MAPP20=''
 then AHA_cat_miss = 1;
 else AHA_cat_miss = 0;
@@ -539,8 +470,8 @@ run;
 
 ods output OneWayFreqs = matrloc.OneWayFreqs;
 proc freq data=matrloc.POID_With_AHA;
-tables SERV MType RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 
-MAPP5 MAPP6 MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 
+tables SERV RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 
+MAPP5 MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 
 MAPP18 MAPP19 MAPP20;
 by bed_decile;
 run;
@@ -549,8 +480,8 @@ ods output close;
 data matrloc.Temp;
 set matrloc.OneWayFreqs(rename=(Table=DecVar));
 DecVar = substr(DecVar,7);			
-DecMode = cat(SERV,MType,RESP,CHC,COMMTY,LOS,MAPP1,MAPP2,MAPP3,MAPP5,
-MAPP6,MAPP7,MAPP8,MAPP11,MAPP12,MAPP13,MAPP16,MAPP18,MAPP19,MAPP20);
+DecMode = cat(SERV,RESP,CHC,COMMTY,LOS,MAPP1,MAPP2,MAPP3,MAPP5,
+MAPP7,MAPP8,MAPP11,MAPP12,MAPP13,MAPP16,MAPP18,MAPP19,MAPP20);
 DecMode = compress(DecMode,' ');			
 DecMode = compress(DecMode,'.');	/* Added 1/11/2017 */		
 keep bed_decile DecVar DecMode Percent;
@@ -639,7 +570,6 @@ merge matrloc.Temp(in=matrix) matrloc.Decile_Metrics_Cat;
 by bed_decile;
 if matrix = 1;
 if SERV     = '' then SERV     = SERV_Mode;
-if MType    = '' then MType    = MType_Mode;
 if RESP     = '' then RESP     = RESP_Mode;
 if CHC      = '' then CHC      = CHC_Mode;
 if COMMTY   = '' then COMMTY   = COMMTY_Mode;
@@ -648,7 +578,6 @@ if MAPP1    = '' then MAPP1    = MAPP1_Mode;
 if MAPP2    = '' then MAPP2    = MAPP2_Mode;
 if MAPP3    = '' then MAPP3    = MAPP3_Mode;
 if MAPP5    = '' then MAPP5    = MAPP5_Mode;
-if MAPP6    = '' then MAPP6    = MAPP6_Mode;
 if MAPP7    = '' then MAPP7    = MAPP7_Mode;
 if MAPP8    = '' then MAPP8    = MAPP8_Mode;
 if MAPP11   = '' then MAPP11   = MAPP11_Mode;
@@ -659,8 +588,8 @@ if MAPP18   = '' then MAPP18   = MAPP18_Mode;
 if MAPP19   = '' then MAPP19   = MAPP19_Mode;
 if MAPP20   = '' then MAPP20   = MAPP20_Mode; 
 
-drop SERV_Mode MType_Mode RESP_Mode CHC_Mode COMMTY_Mode LOS_Mode MAPP1_Mode MAPP2_Mode MAPP3_Mode 
-MAPP5_Mode MAPP6_Mode MAPP7_Mode MAPP8_Mode MAPP11_Mode MAPP12_Mode MAPP13_Mode MAPP16_Mode 
+drop SERV_Mode RESP_Mode CHC_Mode COMMTY_Mode LOS_Mode MAPP1_Mode MAPP2_Mode MAPP3_Mode 
+MAPP5_Mode MAPP7_Mode MAPP8_Mode MAPP11_Mode MAPP12_Mode MAPP13_Mode MAPP16_Mode 
 MAPP18_Mode MAPP19_Mode MAPP20_Mode;
 run;
 
@@ -772,20 +701,30 @@ run;
 
 /* remove POID if it is not found in WK/State/CMS data i.e. no prediction potential */
 /* remove POID if it is found in WK tables but does not exist in AHA, State and CMS */
-/* remove selected POIDs from list: army hospitals, SNF, closed hospitals, christian science centers */ 
-data matrloc.POID_NewVars;
-set matrloc.POID_NewVars;
-if (WK_listed = 0 and State_Listed = 0 and CMS_Listed = 0) or
-(WK_listed = 1 and AHA_Listed = 0 and State_Listed = 0 and CMS_Listed = 0) or
-HMS_POID in ('PO0DTD44','POEF0GP4','POH4B0M3',
-'POJGW7Q8','POM6UN30','PO4VCP17','PO7QV126',
-'PO06H0M9','PO0G27V7','PO2PB1V4','POH4CGG3', 
-'POZ2249D3P', 'POZ2245KJA', 'POZ222CUEU', 
-'POZ22356J6', 'POZ222E4WE', 'POZ2244A2U', 'POZ223FJWV', 'POZ224P898') /* Christian science nursing centers deleted */
-then POID_removed = 1;
-else POID_removed = 0;
+/* remove selected POIDs from list: army hospitals, closed facilities, Christian science nursing centers (HospitalExclusionList.tab in FXFILES)*/ 
+/* MODIFICATION 4/30/2019 - Removed list of hard-coded POIDS and added reference to exclusion list in FXFILES */ 
+data exclusion_list ( drop = Reason);
+   infile "&FXFILES./HospitalExclusionList.tab" delimiter='09'x MISSOVER DSD lrecl=32767 firstobs=2;
+   informat HMS_POID	$10. ;
+   informat Reason 	$40. ;
+   format HMS_POID	$10. ;
+   format Reason 	$40. ;
+   input HMS_POID $ Reason $ ;
 run;
-/* MODIFICATION 04.26.2017 - Removed more POIDs, though they will be suppressed in future aggregations */
+
+proc sort data = matrloc.POID_NewVars; by HMS_POID; run;
+proc sort data = exclusion_list; by HMS_POID; run;
+
+data matrloc.POID_NewVars;
+  merge matrloc.POID_NewVars ( in = a ) exclusion_list ( in = b );
+  by HMS_POID;
+
+  if a then do;
+    if b or ( WK_listed = 0 and State_Listed = 0 and CMS_Listed = 0 ) or
+            ( WK_listed = 1 and AHA_Listed = 0 and State_Listed = 0 and CMS_Listed = 0 ) then POID_removed = 1; else POID_removed = 0;
+	output;
+	end;
+  run;
 
 data matrloc.POID_Removed;
 set matrloc.POID_NewVars;
@@ -800,8 +739,8 @@ run;
 data matrloc.POID_Attributes_IP;
 retain HMS_POID 
 U65pct MaPenet TactInsField Unemp
-MType RESP CHC COMMTY LOS 
-MAPP1 MAPP2 MAPP3 MAPP5 MAPP6 MAPP7 MAPP8
+RESP CHC COMMTY LOS 
+MAPP1 MAPP2 MAPP3 MAPP5 MAPP7 MAPP8
 MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 MAPP19 MAPP20
 Adj_Beds Adj_Births Adj_SurOpIP Adj_SurOpOP Adj_AdmTot 
 IPDTOT MCRDC MCRIPD MCDDC MCDIPD 
@@ -815,8 +754,8 @@ log_Adj_VEM log_VOTH log_FTMDTF log_FTRES log_FTRNTF log_Adj_ADC log_ADJADM log_
 set matrloc.POID_NewVars;
 keep HMS_POID 
 U65pct MaPenet TactInsField Unemp
-MType RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 MAPP5 
-MAPP6 MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 
+RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 MAPP5 
+MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 
 MAPP19 MAPP20
 Adj_Beds Adj_Births Adj_SurOpIP Adj_SurOpOP Adj_AdmTot
 IPDTOT MCRDC MCRIPD MCDDC MCDIPD 
