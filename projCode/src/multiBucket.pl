@@ -785,7 +785,7 @@ sub printInputFile
 	
 	foreach my $y (keys %{$memoryHash->{"CODES_DATA"}->{$bucket}})
 	{
-		if(($y =~ m/^(J|C|S)/) && (uc($memoryHash->{"CODES_DATA"}->{$bucket}->{$y}->{"CODE_SCHEME"}) eq "HCPCS"))
+		if(($y =~ m/^(J|C|S|A|E|L|K|Q|T)/) && (uc($memoryHash->{"CODES_DATA"}->{$bucket}->{$y}->{"CODE_SCHEME"}) eq "HCPCS"))
 		{
 			$addRefDocFlag = "Y";
 		}
