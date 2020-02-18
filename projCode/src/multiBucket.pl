@@ -202,7 +202,7 @@ sub runProjectionsStep
 		$fxFiles .= "InputDataFiles/" . $settingVars->{"FXFILES"}[0];
 	}
 	system("mkdir","-p",$fxFiles);
-	my @reqFiles = qw/ahd_beds_nodup.sas7bdat aha_demo.sas7bdat covar_under65.sas7bdat covar_county_unemp.sas7bdat covar_ma_penetration.sas7bdat covar_hi_expend.sas7bdat CMS_ASC_ProcedureData.txt HospitalExclusionList.tab ins_mapenet.sas7bdat mdsi_bedcount_audit.sas7bdat test_u65byhsa.sas7bdat xwalk_zip.sas7bdat zip2fips.sas7bdat/;
+	my @reqFiles = qw/aha_demo.sas7bdat covar_under65.sas7bdat covar_county_unemp.sas7bdat covar_ma_penetration.sas7bdat covar_hi_expend.sas7bdat CMS_ASC_ProcedureData.txt HospitalExclusionList.tab ins_mapenet.sas7bdat test_u65byhsa.sas7bdat zip2fips.sas7bdat/;
 	print $fxFiles . "\n";
 	foreach my $x (@reqFiles)
 	{
