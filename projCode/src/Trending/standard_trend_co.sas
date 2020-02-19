@@ -10,16 +10,30 @@ infile '../inputs.txt' delimiter='09'x MISSOVER DSD lrecl=32767 firstobs=2;
 input PARAMETER $ VALUE $;
 run;
 
+/* Set default DB credentials */
+%let USERNAME = claims_aggr;
+%let PASSWORD = Hydr0gen2014;
+%let INSTANCE = PLDWH2DBR;
+
 data _null_;
 set inputs;
 
+if PARAMETER = 'USERNAME' then do;
+	if VALUE ~= '' then call symput('USERNAME', trim(left(compress(value))));
+end;
+if PARAMETER = 'PASSWORD' then do;
+	if VALUE ~= '' then call symput('PASSWORD', trim(left(compress(value))));
+end;
+if PARAMETER = 'INSTANCE' then do;
+	if VALUE ~= '' then call symput('INSTANCE', trim(left(compress(value))));
+end;
 if PARAMETER = 'START_DATE' then call symput('start_date',trim(left(compress(value))));
 if PARAMETER = 'MAX_DATE' then call symput('max_date',trim(left(compress(value))));
 if PARAMETER = 'VINTAGE' then call symput ("vintage",trim(left(compress(value))));
 if PARAMETER = 'PERIOD' then do;
 if VALUE = 'WEEK' then call symput('week_flag',1);
-if VALUE = 'MONTH' then call symput('week_flag',2);
-if VALUE = 'YEAR' then call symput('week_flag',3);
+else if VALUE = 'MONTH' then call symput('week_flag',2);
+else if VALUE = 'YEAR' then call symput('week_flag',3);
 end;
 if PARAMETER = 'QA' then call symput('QA',trim(left(compress(value))));;
 
@@ -43,6 +57,9 @@ end;
 run;
 %put &facility.;
 %put &practitioner.;
+%put &USERNAME.;
+%put &PASSWORD.;
+%put &INSTANCE.;
 
 data roles;
 set inputs;
@@ -158,6 +175,15 @@ if vendor = '' then delete;
 keep vendor;
 run;
 
+data vendor_list_masked;
+set vendor_list;
+where substr(vendor,1,3) ~= 'CMS';
+run;
+data vendor_list_exempt;
+set vendor_list;
+where substr(vendor,1,3) = 'CMS';
+run;
+
 %put _USER_;
 
 /* Read in inputs file */
@@ -202,7 +228,7 @@ data _null_;
 call symput ("rand_digit", put(ranuni(0)*10000,Z4.));
 run;
 
-libname pe oracle user=claims_usr password=claims_usr123 path=PLDWH2DBR;
+libname pe oracle user=&USERNAME. password=&PASSWORD. path=&INSTANCE.;
 proc delete data=PE.trend_buckets_&rand_digit.;
 run;
 /* Import codes to Oracle */
@@ -212,13 +238,21 @@ data pe.trend_buckets_&rand_digit.
 	set WORK.buckets_co;
 run ;
 
-proc delete data=PE.trend_vendors_&rand_digit.;
+proc delete data=PE.trend_vendors_exempt_&rand_digit.;
 run;
 /* Import vendor list to Oracle */
-data pe.trend_vendors_&rand_digit.
+data pe.trend_vendors_exempt_&rand_digit.
 (BULKLOAD=YES BL_DIRECT_PATH=NO BL_OPTIONS='ERRORS=899')
 	;
-	set WORK.vendor_list;
+	set WORK.vendor_list_exempt;
+run ;
+proc delete data=PE.trend_vendors_masked_&rand_digit.;
+run;
+/* Import vendor list to Oracle */
+data pe.trend_vendors_masked_&rand_digit.
+(BULKLOAD=YES BL_DIRECT_PATH=NO BL_OPTIONS='ERRORS=899')
+	;
+	set WORK.vendor_list_masked;
 run ;
 
 proc delete data=PE.trend_roles_&rand_digit.;
@@ -440,17 +474,42 @@ data pe.trend_bucket2_&rand_digit.
 run ;
 quit;
 
-%macro pull;
+proc sql ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
+
+	create table pe.trend_job_pxdx_&rand_digit.
+		(BUCKET1 varchar(200), BUCKET2 varchar(200), COUNTING varchar(20), CLAIM_ID num(30), CLAIM_DATE num(20),
+		HMS_POID varchar(80), HMS_PIID varchar(80), COUNT_ID varchar(255)
+		);
+	create table pe.trend_job_dxdx_&rand_digit.
+		(BUCKET1 varchar(200), BUCKET2 varchar(200), COUNTING varchar(20), CLAIM_ID num(30), CLAIM_DATE num(20),
+		HMS_POID varchar(80), HMS_PIID varchar(80), COUNT_ID varchar(255)
+		);
+	create table pe.trend_job_pxpx_&rand_digit.
+		(BUCKET1 varchar(200), BUCKET2 varchar(200), COUNTING varchar(20), CLAIM_ID num(30), CLAIM_DATE num(20),
+		HMS_POID varchar(80), HMS_PIID varchar(80), COUNT_ID varchar(255)
+		);
+	create table pe.trend_job_px1_&rand_digit.
+		(BUCKET1 varchar(200), COUNTING varchar(20), CLAIM_ID num(30), CLAIM_DATE num(20),
+		HMS_POID varchar(80), HMS_PIID varchar(80), COUNT_ID varchar(255)
+		);
+	create table pe.trend_job_px2_&rand_digit.
+		(BUCKET2 varchar(200), COUNTING varchar(20), CLAIM_ID num(30), CLAIM_DATE num(20),
+		HMS_POID varchar(80), HMS_PIID varchar(80), COUNT_ID varchar(255)
+		);
+
+quit;
+
+
+%macro pull(vendorlist=, xwalk=);
 
 /* Pull the data */
-proc delete data=PE.trend_job_pxdx_&rand_digit.;
-run;
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
-	create table pe.trend_job_pxdx_&rand_digit. as 
-	select *
-	from connection to oracle
+		execute(insert /*+ append */ into trend_job_pxdx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,HMS_POID,HMS_PIID,COUNT_ID)   
+		select BUCKET1, BUCKET2, COUNTING, CLAIM_ID, CLAIM_DATE, HMS_POID, HMS_PIID, COUNT_ID
+		from  
 		(select b1.BUCKET1, b2.BUCKET2, b1.COUNTING, a.CLAIM_ID,
 		a.CLAIM_THROUGH_DATE as CLAIM_DATE,
 		f.ID_VALUE as HMS_POID,
@@ -463,10 +522,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -488,7 +547,8 @@ proc sql ;
 		and a.CLAIM_PRACTITIONER_GROUP_ID=pgm.PRACTITIONER_GROUP_ID and pgm.PRACTITIONER_ROLE_ID=r.ROLE_ID
 		and pgm.PRACTITIONER_ID=pid.PRACTITIONER_ID and pid.ID_TYPE = 'PIID'
 		and (to_date(%unquote(%str(%'&vintage%')),'YYYYMMDD') between pid.START_DATE and pid.END_DATE)
-		);
+		)
+		) by oracle;
 
 		execute(insert /*+ append */ into trend_job_pxdx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
 		HMS_POID,HMS_PIID,COUNT_ID)   
@@ -506,10 +566,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -551,10 +611,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -597,10 +657,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -643,10 +703,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -689,10 +749,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -734,10 +794,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -778,10 +838,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -823,10 +883,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -869,10 +929,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -915,10 +975,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
@@ -961,10 +1021,10 @@ proc sql ;
 		claimswh.diagnosis d,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px,
@@ -992,14 +1052,13 @@ proc sql ;
 
 quit;
 
-proc delete data=PE.trend_job_pxpx_&rand_digit.;
-run;
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
-	create table pe.trend_job_pxpx_&rand_digit. as 
-	select *
-	from connection to oracle
+		execute(insert /*+ append */ into trend_job_pxpx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
+		HMS_POID,HMS_PIID,COUNT_ID)   
+		select BUCKET1, BUCKET2, COUNTING, CLAIM_ID, CLAIM_DATE, HMS_POID, HMS_PIID, COUNT_ID
+		from  
 		(select b1.BUCKET1, b2.BUCKET2, b1.COUNTING, a.CLAIM_ID,
 		a.CLAIM_THROUGH_DATE as CLAIM_DATE,
 		f.ID_VALUE as HMS_POID,
@@ -1013,10 +1072,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
@@ -1039,7 +1098,8 @@ proc sql ;
 		and a.PRACTITIONER_GROUP_ID=pgm.PRACTITIONER_GROUP_ID and pgm.PRACTITIONER_ROLE_ID=r.ROLE_ID
 		and pgm.PRACTITIONER_ID=pid.PRACTITIONER_ID and pid.ID_TYPE = 'PIID'
 		and (to_date(%unquote(%str(%'&vintage%')),'YYYYMMDD') between pid.START_DATE and pid.END_DATE)
-		);
+		)
+		) by oracle;
 
 		execute(insert /*+ append */ into trend_job_pxpx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
 		HMS_POID,HMS_PIID,COUNT_ID)   
@@ -1058,10 +1118,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
@@ -1104,10 +1164,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
@@ -1150,10 +1210,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
@@ -1181,14 +1241,13 @@ proc sql ;
 
 quit;
 
-proc delete data=PE.trend_job_dxdx_&rand_digit.;
-run;
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
-	create table pe.trend_job_dxdx_&rand_digit. as 
-	select *
-	from connection to oracle
+		execute(insert /*+ append */ into trend_job_dxdx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
+		HMS_POID,HMS_PIID,COUNT_ID)   
+		select BUCKET1, BUCKET2, COUNTING, CLAIM_ID, CLAIM_DATE, HMS_POID, HMS_PIID, COUNT_ID
+		from  
 		(select b1.BUCKET1, b2.BUCKET2, b1.COUNTING, a.CLAIM_ID,
 		a.CLAIM_THROUGH_DATE as CLAIM_DATE,
 		f.ID_VALUE as HMS_POID,
@@ -1202,10 +1261,10 @@ proc sql ;
 		claimswh.diagnosis d2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx2,
@@ -1228,7 +1287,8 @@ proc sql ;
 		and a.PRACTITIONER_GROUP_ID=pgm.PRACTITIONER_GROUP_ID and pgm.PRACTITIONER_ROLE_ID=r.ROLE_ID
 		and pgm.PRACTITIONER_ID=pid.PRACTITIONER_ID and pid.ID_TYPE = 'PIID'
 		and (to_date(%unquote(%str(%'&vintage%')),'YYYYMMDD') between pid.START_DATE and pid.END_DATE)
-		);
+		)
+		) by oracle;
 
 		execute(insert /*+ append */ into trend_job_dxdx_&rand_digit.(BUCKET1,BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
 		HMS_POID,HMS_PIID,COUNT_ID)   
@@ -1247,10 +1307,10 @@ proc sql ;
 		claimswh.diagnosis d2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx2,
@@ -1293,10 +1353,10 @@ proc sql ;
 		claimswh.diagnosis d2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx2,
@@ -1339,10 +1399,10 @@ proc sql ;
 		claimswh.diagnosis d2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx1,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'dx') dx2,
@@ -1371,14 +1431,13 @@ proc sql ;
 quit;
 
 /* For special cases where pxpx jobs are counting procedures */
-proc delete data=PE.trend_job_px1_&rand_digit.;
-run;
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
-	create table pe.trend_job_px1_&rand_digit. as 
-	select *
-	from connection to oracle
+		execute(insert /*+ append */ into trend_job_px1_&rand_digit.(BUCKET1,COUNTING,CLAIM_ID,CLAIM_DATE,
+		HMS_POID,HMS_PIID,COUNT_ID)   
+		select BUCKET1, COUNTING, CLAIM_ID, CLAIM_DATE, HMS_POID, HMS_PIID, COUNT_ID
+		from  
 		(select b1.BUCKET1, b1.COUNTING, a.CLAIM_ID,
 		a.CLAIM_THROUGH_DATE as CLAIM_DATE,
 		f.ID_VALUE as HMS_POID,
@@ -1389,10 +1448,10 @@ proc sql ;
 		claimswh.procedures p1,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_bucket1_&rand_digit. where COUNTING = 'PROCEDURE' and TYPE1 = 'px') b1
@@ -1408,7 +1467,8 @@ proc sql ;
 		and a.CLAIM_PRACTITIONER_GROUP_ID=pgm.PRACTITIONER_GROUP_ID and pgm.PRACTITIONER_ROLE_ID=r.ROLE_ID
 		and pgm.PRACTITIONER_ID=pid.PRACTITIONER_ID and pid.ID_TYPE = 'PIID'
 		and (to_date(%unquote(%str(%'&vintage%')),'YYYYMMDD') between pid.START_DATE and pid.END_DATE)
-		);
+		)
+		) by oracle;
 
 		execute(insert /*+ append */ into trend_job_px1_&rand_digit.(BUCKET1,COUNTING,CLAIM_ID,CLAIM_DATE,
 		HMS_POID,HMS_PIID,COUNT_ID)   
@@ -1424,10 +1484,10 @@ proc sql ;
 		claimswh.procedures p1,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px1,
 		(select * from trend_bucket1_&rand_digit. where COUNTING = 'PROCEDURE' and TYPE1 = 'px') b1
@@ -1448,14 +1508,13 @@ proc sql ;
 
 quit;
 
-proc delete data=PE.trend_job_px2_&rand_digit.;
-run;
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
-	create table pe.trend_job_px2_&rand_digit. as 
-	select *
-	from connection to oracle
+		execute(insert /*+ append */ into trend_job_px2_&rand_digit.(BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
+		HMS_POID,HMS_PIID,COUNT_ID)   
+		select BUCKET2, COUNTING, CLAIM_ID, CLAIM_DATE, HMS_POID, HMS_PIID, COUNT_ID
+		from  
 		(select b2.BUCKET2, b2.COUNTING, a.CLAIM_ID,
 		a.CLAIM_THROUGH_DATE as CLAIM_DATE,
 		f.ID_VALUE as HMS_POID,
@@ -1466,10 +1525,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_pos_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
 		(select * from trend_bucket2_&rand_digit. where COUNTING = 'PROCEDURE' and TYPE2 = 'px') b2
@@ -1485,7 +1544,8 @@ proc sql ;
 		and a.CLAIM_PRACTITIONER_GROUP_ID=pgm.PRACTITIONER_GROUP_ID and pgm.PRACTITIONER_ROLE_ID=r.ROLE_ID
 		and pgm.PRACTITIONER_ID=pid.PRACTITIONER_ID and pid.ID_TYPE = 'PIID'
 		and (to_date(%unquote(%str(%'&vintage%')),'YYYYMMDD') between pid.START_DATE and pid.END_DATE)
-		);
+		)
+		) by oracle;
 
 		execute(insert /*+ append */ into trend_job_px2_&rand_digit.(BUCKET2,COUNTING,CLAIM_ID,CLAIM_DATE,
 		HMS_POID,HMS_PIID,COUNT_ID)   
@@ -1501,10 +1561,10 @@ proc sql ;
 		claimswh.procedures p2,
 		claimswh.facility_id_crosswalk f,
 		claimswh.practitioner_group_members pgm,
-		claimswh.practitioner_id_crosswalk pid,
+		claimswh.&xwalk. pid,
 		claimswh.vendors v,
 		trend_bill_&rand_digit. s,
-		trend_vendors_&rand_digit. ven,
+		trend_vendors_&vendorlist._&rand_digit. ven,
 		trend_roles_&rand_digit. r,
 		(select * from trend_buckets_&rand_digit. where TYPE = 'px') px2,
 		(select * from trend_bucket2_&rand_digit. where COUNTING = 'PROCEDURE' and TYPE2 = 'px') b2
@@ -1527,7 +1587,8 @@ quit;
 
 %mend;
 
-%pull;
+%pull(vendorlist=masked, xwalk=practitioner_id_crosswalk_masked);
+%pull(vendorlist=exempt, xwalk=practitioner_id_crosswalk);
 
 %put &facility.;
 %put &practitioner.;
@@ -1536,7 +1597,7 @@ quit;
 %if &facility. = 0 & &practitioner. = 0 %then %do;
 
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
 	create table buckets_pxdx as 
 	select *
@@ -1571,7 +1632,7 @@ quit ;
 %else %if &facility. = 1 & &practitioner. = 0 %then %do;
 
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
 	create table buckets_pxdx as 
 	select *
@@ -1606,7 +1667,7 @@ quit ;
 %else %if &facility. = 0 & &practitioner. = 1 %then %do;
 
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
 	create table buckets_pxdx as 
 	select *
@@ -1641,7 +1702,7 @@ quit ;
 %else %if &facility. = 1 & &practitioner. = 1 %then %do;
 
 proc sql ;
-	connect to oracle(user=claims_usr password=claims_usr123 path=PLDWH2DBR PRESERVE_COMMENTS) ;
+	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE. PRESERVE_COMMENTS) ;
 
 	create table buckets_pxdx as 
 	select *
@@ -2394,12 +2455,19 @@ proc delete data=PE.trend_bucket1_&rand_digit.;
 run;
 proc delete data=PE.trend_bucket2_&rand_digit.;
 run;
-proc delete data=PE.trend_vendors_&rand_digit.;
+proc delete data=PE.trend_vendors_exempt_&rand_digit.;
+run;
+proc delete data=PE.trend_vendors_masked_&rand_digit.;
 run;
 proc delete data=PE.trend_roles_&rand_digit.;
 run;
 
-
+/* Establish today's date */
+data _null_;
+tday = left(put(YEAR(TODAY()),Z4.))||left(put(MONTH(TODAY()),Z2.))||left(put(DAY(TODAY()),Z2.));
+call symput('today',tday);
+run;
+%put 'today :' &today;
 
 /* Add in QA graphs */
 %macro QA_plots;
@@ -2408,10 +2476,19 @@ data _null_;
 set inputs;
 
 if PARAMETER = 'COMPARE_FILE' then do;
-	if VALUE = '' then call symput('compare_file','none');
-	else call symput('compare_file',trim(left(compress(value))));
+	if VALUE = '' then do;
+		call symput('compare_file','none');
+		call symput('file_exist',0);
+	end;
+	else do;
+		call symput('compare_file',trim(left(compress(value))));
+		call symput('file_exist',1);
+	end;
 end;
-else call symput('compare_file','none');
+else do;
+	call symput('compare_file','none');
+	call symput('file_exist',0);
+end;
 
 if PARAMETER = 'PERIOD' then do;
 	if VALUE = 'WEEK' then call symput('week_flag',1);
@@ -2422,8 +2499,9 @@ end;
 run;
 
 %put &compare_file;
+%put &file_exist;
 
-%if &compare_file ~= none %then %do;
+%if &file_exist = 1 %then %do;
 
 symbol1 interpol=join
         value=dot

@@ -121,7 +121,7 @@ if(nchar(pxdxf) > 0) {
 
 #apply the min rank filter
 if(minrank > 1) {
- iddata2<-subset(iddata2,iddata2[,rankcol] >= minrank)
+ iddata2<-subset(iddata,iddata[,rankcol] >= minrank)
 }
 
 #apply the specialty filter

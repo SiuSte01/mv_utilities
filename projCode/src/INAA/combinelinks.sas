@@ -17,7 +17,7 @@ options mprint;
     select * from connection to oracle
      (select var1,count from
      (select provider1||':'||provider2 as var1,sum(ptnt_count) as count
-      from INA_NETWORKS where job_id=&aggrid
+      from INA_NETWORK_VW where job_id=&aggrid
       and provider1 <> 'NULL' and provider2 <> 'NULL'
       and network_name=%unquote(%str(%'&bucket%'))
       group by provider1||':'||provider2

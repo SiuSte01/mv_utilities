@@ -37,15 +37,15 @@ options mprint;
       connect to oracle(user=&dbuser. password=&dbpass. path=&dbname.) ;
        create table denom3 as
         select * from connection to oracle
-         (select provider_id as hms_id, 'Grp1' as var4, patient_count as patcnt
-            from INA_DENOMS t where job_id=&aggrid
+         (select provider_id as hms_id, 'Grp1' as var4, count as patcnt
+            from INA_DENOM t where job_id=&aggrid
             and network_name=%unquote(%str(%'&bucket%'))
             and bucket_type=%unquote(%str(%'&grp1type%')) 
             and bucket=%unquote(%str(%'&grp1codegrp%'))
             and substr(provider_id,1,2) = %unquote(%str(%'&grp1ent%'))
           union
-           select provider_id as hms_id, 'Grp2' as var4, patient_count as patcnt
-            from INA_DENOMS t where job_id=&aggrid
+           select provider_id as hms_id, 'Grp2' as var4, count as patcnt
+            from INA_DENOM t where job_id=&aggrid
             and network_name=%unquote(%str(%'&bucket%'))
             and bucket_type=%unquote(%str(%'&grp2type%')) 
             and bucket=%unquote(%str(%'&grp2codegrp%'))
@@ -60,8 +60,8 @@ options mprint;
       connect to oracle(user=&dbuser. password=&dbpass. path=&dbname.) ;
        create table denom3 as
         select * from connection to oracle
-         (select provider_id as hms_id, 'Grp1' as var4, patient_count as patcnt
-            from INA_DENOMS t where job_id=&aggrid
+         (select provider_id as hms_id, 'Grp1' as var4, count as patcnt
+            from INA_DENOM t where job_id=&aggrid
             and network_name=%unquote(%str(%'&bucket%'))
             and bucket_type=%unquote(%str(%'&grp1type%'))
             and bucket=%unquote(%str(%'&grp1codegrp%'))

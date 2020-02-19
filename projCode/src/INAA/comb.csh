@@ -21,9 +21,6 @@ else
  setenv MINSHRPAT $minshrpat
 endif
 
-#figure out if links are broken out by payer group
-set linksbypayer = `grep INCLUDE_PAYER_TYPE_BREAK ../../config/settings.cfg | sed -e "s/ //g" | cut -d\= -f2`
-echo $linksbypayer
 
 #figure out the aggregation id to pull
 set aggrid = `grep AggrID  ../inputs | awk '{print $2}'`
@@ -57,11 +54,7 @@ endif
 
 
 #run SAS code to combine the 3 links file together and do quintiling
-if($linksbypayer == "Yes") then
- sas -memsize 8G -noterminal $rootdir/combinelinks_psplit.sas
-else
- sas -memsize 8G -noterminal $rootdir/combinelinks.sas
-endif
+sas -memsize 8G -noterminal $rootdir/combinelinks.sas
 
 #read input file to determine whether to quintile or decile denom.   
 #use default of quintile if not present in input file
