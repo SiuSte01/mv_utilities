@@ -659,8 +659,8 @@ sub printInputFile
 	my $inst = $settingVars->{"INSTANCE"}[0];
 	my $aggrTab = $settingVars->{"AGGREGATION_TABLE"}[0];
 	my $claimPatTable = $settingVars->{"CLAIM_PATIENT_TABLE"}[0];
-	my $fxFiles = $codeRepo . "/";
-	$fxFiles .= $settingVars->{"FXFILES"}[0] ne "NULL" ? "InputDataFiles_NewWH_" . $settingVars->{"FXFILES"}[0] : "InputDataFiles_NewWH";
+	my $fxFiles = $codeRepo . "/InputDataFiles/";
+	$fxFiles .= $settingVars->{"FXFILES"}[0] ne "NULL" ? $settingVars->{"FXFILES"}[0] : $envName;
 	my $addRefOverride = uc($settingVars->{"ADD_REF_OVERRIDE"}[0]);
 	my $addRefDocFlag = "N";
 	if($addRefOverride eq "Y")
