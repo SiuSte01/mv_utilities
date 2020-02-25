@@ -32,7 +32,7 @@ setup(name='mvUtil',
       scripts=[
 			'projCode/src/multiBucket.pl',
 			'projCode/src/run_ABCPM.pl',
-			'projCode/src/Trending/standard_trend.sas',
-			'projCode/src/Trending/standard_trend_co.sas'
+			'projCode/src/Trending/standard_trend',
+			'projCode/src/Trending/standard_trend_co'
 			],
       zip_safe=False)
