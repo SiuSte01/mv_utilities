@@ -39,6 +39,7 @@ use MiscFunctions;
 #optionally can have donotproject.txt in current dir with list of buckets
 # to not project for IP and OP at present
 
+my $currDir = `pwd`;
 my $npar=scalar(@ARGV);
 my ($jobtype,$setting);
 if($npar==2)
@@ -132,6 +133,7 @@ foreach my $b (keys %b2type)
 	$b2=~s/\(//g;
 	$b2=~s/\)//g;
 	$b2=~s/\///g;
+	#next unless $b2 eq "5060";
 	
 	#do the things needed in all settings, then do the setting-specific stuff
 	
@@ -318,14 +320,17 @@ foreach my $b (keys %b2type)
 			open(OUT,">>input.txt");
 			print OUT "PROJECTOFF\tN\n";
 			print OUT "PROJECTASC\tN\n";
+			print OUT "PROJECTLAB\tN\n" if $setting eq "Freestanding";
 			close(OUT);
 		}
 		
 		#save the lst and log
-		my $lst_asc="asc_$b2.lst";
-		my $log_asc="asc_$b2.log";
-		my $lst_off="off_$b2.lst";
-		my $log_off="off_$b2.log";
+		my $lst_asc="asc_" . $b2 . ".lst";
+		my $log_asc="asc_" . $b2 . ".log";
+		my $lst_off="off_" . $b2 . ".lst";
+		my $log_off="off_" . $b2 . ".log";
+		my $log_lab="lab_" . $b2 . ".log";
+		my $deb_lab="lab_" . $b2 . "_debug.log";
 		
 		#symlink the necessary files from project dir
 		system("ln -s ../asc_datamatrix.sas7bdat .");
@@ -425,21 +430,93 @@ foreach my $b (keys %b2type)
 			$bstats{$b}{HAVEASCRES}=0;
 		}
 		
-		#combine step for office and asc
-		system("sas -noterminal -memsize 4G $codedir/combine_office_asc.sas");
-		
-		#save combined office + ASC bucket result if exists, else warn
-		my $tgt=($jobtype eq "AB") ? "pxdxresult_nostar.txt" : "pxdxresultnostar.txt";
-		if(-e "office_asc_projections.txt")
+		if($setting eq "Freestanding")
 		{
-			$bstats{$b}{HAVECOMBRES}=1;
-			&saveResult("office_asc_projections.txt","pxdxresult.txt","n");
-			&saveResult("office_asc_projections_nostar.txt",$tgt,"n");
+			system("mkdir","-p","Lab");
+			chdir("Lab");
+			
+			#run lab projections
+			system("project_lab.py --scale-missing");
+			system("cp lab_proj.log $log_lab") if (-e "lab_proj.log");
+			system("cp lab_proj_debug.log $deb_lab") if (-e "lab_proj_debug.log");
+			system("rm lab_proj.log.1") if (-e "lab_proj.log.1");
+			system("rm lab_proj_debug.log.1") if (-e "lab_proj_debug.log.1");
+			#collect stats from log files for lab
+			&collectLabstats($b);
+			
+			system("mv * ../");
+			chdir("..");
+			system("rm -rf Lab");
+			#check bucket result if exists, else warn
+			if(-e "lab_projection.txt")
+			{
+				$bstats{$b}{HAVELABRES}=1;
+				#DEBUG
+				#can disable saving LAB by itself after QC to old process is done
+				#first put bucket name in lst col
+				open(INP,"lab_projection.txt");
+				open(OUT,">lab_projections_wb.txt");
+				while(<INP>)
+				{
+					chomp;
+					if($. == 1)
+					{
+						print OUT "Bucket\t$_\n";
+					}
+					elsif($. > 1)
+					{
+						print OUT "$b\t$_\n";
+					}
+				}
+				close(INP);
+				close(OUT);
+				
+				&saveResult("lab_projections_wb.txt","alllab_nostar.txt","n");
+			}
+			else
+			{
+				print "\tWARNING: no lab_projections.txt result for |$b|\n";
+				$bstats{$b}{HAVELABRES}=0;
+			}
+		}
+		#lineTracker
+		
+		if($setting eq "Freestanding")
+		{
+			#combine step for office, asc, and lab
+			system("combine_abcpm.py " . $b);
+			
+			my $tgt=($jobtype eq "AB") ? "pxdxresult_nostar.txt" : "pxdxresultnostar.txt";
+			if(-e "freestanding_projections.txt")
+			{
+				$bstats{$b}{HAVECOMBRES}=1;
+				&saveResult("freestanding_projections.txt","pxdxresult.txt","n");
+				&saveResult("freestanding_projections_nostar.txt",$tgt,"n");
+			}
+			else
+			{
+				print "\tWARNING: no freestanding_projections.txt result for |$b|\n";
+				$bstats{$b}{HAVECOMBRES}=0;
+			}
 		}
 		else
 		{
-			print "\tWARNING: no office_asc_projection.txt result for |$b|\n";
-			$bstats{$b}{HAVECOMBRES}=0;
+			#combine step for office and asc
+			system("sas -noterminal -memsize 4G $codedir/combine_office_asc.sas");
+			
+			#save combined office + ASC bucket result if exists, else warn
+			my $tgt=($jobtype eq "AB") ? "pxdxresult_nostar.txt" : "pxdxresultnostar.txt";
+			if(-e "office_asc_projections.txt")
+			{
+				$bstats{$b}{HAVECOMBRES}=1;
+				&saveResult("office_asc_projections.txt","pxdxresult.txt","n");
+				&saveResult("office_asc_projections_nostar.txt",$tgt,"n");
+			}
+			else
+			{
+				print "\tWARNING: no office_asc_projections.txt result for |$b|\n";
+				$bstats{$b}{HAVECOMBRES}=0;
+			}
 		}
 	}
 	elsif($setting eq "SNF")
@@ -554,8 +631,8 @@ if($setting =~ m/IP|OP/)
 elsif($setting =~ m/OfficeASC|Freestanding/)
 {
 	open(OUT,">summaryinfo.txt");
-	print OUT "Bucket\tOffMedPf\tOffNobs\tASCMedPf\tASCNobs\tHaveOffRes\t";
-	print OUT "HaveASCRes\tHaveCombRes\n";
+	my @outHeader = $setting eq "Freestanding"? qw/Bucket OffMedPf OffNobs ASCMedPf ASCNobs LABNobs HaveOffRes HaveASCRes HaveLabRes HaveCombRes/ : qw/Bucket OffMedPf OffNobs ASCMedPf ASCNobs HaveOffRes HaveASCRes HaveCombRes/;
+	print OUT join("\t",@outHeader) . "\n";
 	foreach my $b (keys %bstats)
 	{
 		my @v;
@@ -564,8 +641,16 @@ elsif($setting =~ m/OfficeASC|Freestanding/)
 		push @v,defined $bstats{$b}{OFFNOBS} ? $bstats{$b}{OFFNOBS} : "";
 		push @v,defined $bstats{$b}{ASCMEDPF} ? $bstats{$b}{ASCMEDPF} : "";
 		push @v,defined $bstats{$b}{ASCNOBS} ? $bstats{$b}{ASCNOBS} : "";
+		if($setting eq "Freestanding")
+		{
+			push @v,defined $bstats{$b}{LABNOBS} ? $bstats{$b}{LABNOBS} : "";
+		}
 		push @v,defined $bstats{$b}{HAVEOFFRES} ? $bstats{$b}{HAVEOFFRES} : "";
 		push @v,defined $bstats{$b}{HAVEASCRES} ? $bstats{$b}{HAVEASCRES} : "";
+		if($setting eq "Freestanding")
+		{
+			push @v,defined $bstats{$b}{HAVELABRES} ? $bstats{$b}{HAVELABRES} : "";
+		}
 		push @v,defined $bstats{$b}{HAVECOMBRES} ? $bstats{$b}{HAVECOMBRES} : "";
 		my $str=join("\t",@v);
 		print OUT "$str\n";
@@ -808,7 +893,7 @@ sub collectOfficestats
 {
 	my $b=shift;
 	
-	my $medpf=`egrep "^Median" project_Office.log`;
+	my $medpf= -e "project_Office.log" ? `egrep "^Median" project_Office.log` : "";
 	chomp($medpf);
 	if(length($medpf) > 0)
 	{
@@ -821,7 +906,7 @@ sub collectOfficestats
 		$bstats{$b}{OFFMEDPF}="";
 	}
 	
-	my $nobs=`grep -w "Number of Observations Used" project_Office.lst | tail -1`;
+	my $nobs= -e "project_Office.lst" ? `grep -w "Number of Observations Used" project_Office.lst | tail -1` : "";
 	chomp($nobs);
 	$nobs=~s/Number of Observations Used//g;
 	$nobs=~s/^\s+//g;
@@ -833,7 +918,7 @@ sub collectASCstats
 {
 	my $b=shift;
 	
-	my $medpf=`egrep "^Median_pf_phys" new_asc_projections.log | tail -1`;
+	my $medpf= -e "project_ASC.log" ? `egrep "^Median_pf_phys" project_ASC.log | tail -1` : "";
 	chomp($medpf);
 	if(length($medpf) > 0)
 	{
@@ -846,12 +931,88 @@ sub collectASCstats
 		$bstats{$b}{ASCMEDPF}="";
 	}
 	
-	my $nobs=`grep -w "Number of Observations Used" new_asc_projections.lst | tail -1`;
+	my $nobs= -e "project_ASC.lst" ? `grep -w "Number of Observations Used" project_ASC.lst | tail -1` : "";
 	chomp($nobs);
 	$nobs=~s/Number of Observations Used//g;
 	$nobs=~s/^\s+//g;
 	$nobs=~s/\s+$//g;
 	$bstats{$b}{ASCNOBS}=$nobs;
 }
+
+sub collectLabstats
+{
+	my $b=shift;
+	
+	my $recPulled = `grep "Pulled" lab_proj.log`;
+	my @recs = split("\n",$recPulled);
+	my $nobs = 0;
+	foreach my $x (@recs)
+	{
+		$x =~ s/(^.*\|Pulled | records$)//g;
+		$nobs += $x;
+	}
+	$bstats{$b}{LABNOBS}=$nobs;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
