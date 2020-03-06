@@ -75,10 +75,10 @@ while(<INP>)
 close(INP);
 
 #read the do not project list if provided
-if(-e "../donotproject.txt")
+if(-e "donotproject.txt")
 {
 	my @dnpKey = qw/BUCKET/;
-	$memoryHash->{"DNP_BUCKETS"} = MiscFunctions::fillDataHashes(file=>"../donotproject.txt",hashKey=>\@dnpKey);
+	$memoryHash->{"DNP_BUCKETS"} = MiscFunctions::fillDataHashes(file=>"donotproject.txt",hashKey=>\@dnpKey);
 	foreach my $x (keys %{$memoryHash->{"DNP_BUCKETS"}})
 	{
 		$b2type{$x}="NoProj";
