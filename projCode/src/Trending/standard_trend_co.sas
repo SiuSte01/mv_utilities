@@ -128,6 +128,7 @@ run;
 data role_list_default;
 input ROLE_ID 1. ROLE_TYPE $4.;
 datalines;
+0BOTH
 1INST
 2INST
 3INST
@@ -136,10 +137,22 @@ datalines;
 ;
 run; 
 
+data role_list_zero;
+input ROLE_ID 1. ROLE_TYPE $4.;
+datalines;
+0BOTH
+;
+run; 
+
 %macro role_count;
 %if &ROLES. = 0 %then %do;
 data role_list;
 set role_list_default;
+run; 
+%end;
+%else %do;
+data role_list;
+set role_list_zero role_list;
 run; 
 %end;
 %mend;
