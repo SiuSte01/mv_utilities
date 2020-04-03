@@ -19,15 +19,10 @@ setup(name='mvUtil',
 				'projCode/src/AdvisoryBoard',
 				'projCode/src/INA',
 				'projCode/src/Trending'
-			#	'aggr/cloneAggr',
-			#	'aggr/ina',
-			#		'aggr/ina/filter',
-			#		'aggr/ina/getInaEntityPcts',
-			#		'aggr/ina/qaINA',
-			#	'aggr/pxdx',
-			#		'aggr/pxdx/buildAllCodesExact'
 			],
       scripts=[
+			'projCode/src/AdvisoryBoard/combine_inadirs.pl',
+			'projCode/src/mbSplitter.pl',
 			'projCode/src/multiBucket.pl',
 			'projCode/src/run_ABCPM.pl',
 			'projCode/src/Trending/standard_trend',
