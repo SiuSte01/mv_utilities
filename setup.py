@@ -22,8 +22,11 @@ setup(name='mvUtil',
 			],
       scripts=[
 			'projCode/src/AdvisoryBoard/combine_inadirs.pl',
+			'projCode/src/AdvisoryBoard/combinesummaries_input.pl',
+			'projCode/src/AdvisoryBoard/comparesizes_input.pl',
 			'projCode/src/mbSplitter.pl',
 			'projCode/src/multiBucket.pl',
+			'projCode/src/multiBucket_ABCPM.pl',
 			'projCode/src/run_ABCPM.pl',
 			'projCode/src/Trending/standard_trend',
 			'projCode/src/Trending/standard_trend_co'
