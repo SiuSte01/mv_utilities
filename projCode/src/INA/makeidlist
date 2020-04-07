@@ -27,7 +27,7 @@ use File::Basename;
 use Cwd;
 my $scriptDir;
 my $libDir;
-my $sasScript;
+my $rScript;
 BEGIN
 {
 	$scriptDir = Cwd::abs_path(dirname($0));
@@ -35,7 +35,7 @@ BEGIN
 	if($lib =~ m/mv_utilities/)
 	{
 		$lib =~ s/mv_utilities.*/mv_utilities/;
-		$sasScript = Cwd::abs_path($lib) . "/projCode/src/INA/makeidlist.sas";
+		$rScript = Cwd::abs_path($lib) . "/projCode/src/INA/makeidlist.R";
 	}
 	else
 	{
@@ -45,14 +45,14 @@ BEGIN
 		my $sitePath = `python -m site | grep $lib | grep site-packages`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
-		$sasScript = $sitePath . "/projCode/src/INA/makeidlist.sas";
+		$rScript = $sitePath . "/projCode/src/INA/makeidlist.R";
 	}
 }
 
 my @ogArgs = @ARGV;
 $| = 1;
 
-system("sas -noterminal -memsize 4G " . $sasScript);
+system("R CMD BATCH --vanilla " . $rScript);
 
 #End of main code
 
