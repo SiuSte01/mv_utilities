@@ -196,7 +196,16 @@ if($analysisType eq "Projections")
 		print "Building " . $x . " Projections...\n";
 		my $mbTimeBegin = time();
 		system("mkdir","-p",$x);
-		my $pbFile = $prevDir . "/" . $x . "/buckets.txt";
+		my $pbFile;
+		if(defined $settingVars->{"BUCKET_PATH"}[0] && $settingVars->{"BUCKET_PATH"}[0] ne "NULL")
+		{
+			my $bucketPath = $settingVars->{"BUCKET_PATH"}[0];
+			$pbFile = -e $bucketPath ? $bucketPath : die "BUCKET_PATH not found: " . $bucketPath . "\n";
+		}
+		else
+		{
+			$pbFile = $prevDir . "/" . $x . "/buckets.txt";
+		}
 		my $pdnpFile = $prevDir . "/" . $x . "/donotproject.txt";
 		system("cp " . $pbFile . " " . $x);
 		system("cp " . $pdnpFile . " " . $x) if -e $pdnpFile;
