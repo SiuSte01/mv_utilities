@@ -207,16 +207,9 @@ proc sort data = claim.ip_datamatrix nodupkey; by hms_poid; run;
      -- Differs from old version because only uses one ORG_NAME */
 %macro splitmatrix();
   %if %upcase(&SPLITIPMATRIX) = Y %then %do;
-    proc sql;
-      create table children_hosp as
-        select distinct hms_poid
-        from profile.organization_addresses_view
-        where org_name like '%CHILD%' and Vintage_num = &vintage.
-        order by hms_poid;
-      quit;
-
+  
     data claim.ip_matrix_nonChild claim.ip_matrix_child;
-      merge claim.ip_datamatrix ( in = a ) children_hosp ( in = b );
+      merge claim.ip_datamatrix ( in = a ) fxfiles.pediatric_hospitals_&vintage. ( in = b );
       by hms_poid;
 	  if a and not b then output claim.ip_matrix_nonChild;
 	  if a and b then output claim.ip_matrix_Child;
