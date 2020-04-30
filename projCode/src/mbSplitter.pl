@@ -52,7 +52,7 @@ use MiscFunctions;
 #perl mbSplitter.pl
 #run from this months project directory
 
-#before kicking off run_ABCPM.pl, need to do following steps:
+#before kicking off mbSplitter.pl, need to do following steps:
 #1)create config directory, copy settings.cfg from prior month config dir
 #
 #2)change vintage and job id (aggr id) in settings.cfg to whatever should 
@@ -97,13 +97,24 @@ my $qcScript = $scatterDir . "/ABCPM_monthlyQC.R";
 my $logDir = "logFiles";
 
 #verify settingVars
-foreach my $x (qw/VINTAGE JOB_ID USERNAME PASSWORD INSTANCE AGGREGATION_TABLE CLAIM_PATIENT_TABLE CLIENT ANALYSIS_TYPE PREV_DIR SETTINGS/)
+foreach my $x (qw/VINTAGE USERNAME PASSWORD INSTANCE AGGREGATION_TABLE CLAIM_PATIENT_TABLE CLIENT ANALYSIS_TYPE PREV_DIR SETTINGS/)
 {
 	die $x . "=> parameter is required\n" unless defined $settingVars->{$x}[0] && $settingVars->{$x}[0] ne "NULL";
 }
 die "CLIENT must be either AB or CPM\n" unless $settingVars->{"CLIENT"}[0] =~ m/(^AB$|^CPM$)/;
-die "ANALYSIS_TYPE must be one of the following values: Projections|QC|Buildmigrations|Checkmigrations\n" unless $settingVars->{"ANALYSIS_TYPE"}[0] =~ m/(^Projections$|^QC$|^Buildmigrations$|^Checkmigrations$)/;
+die "ANALYSIS_TYPE must be one of the following values: Aggr|Projections|QC|Buildmigrations|Checkmigrations\n" unless $settingVars->{"ANALYSIS_TYPE"}[0] =~ m/(^Aggr$|^Projections$|^QC$|^Buildmigrations$|^Checkmigrations$)/;
 die "ANALYSIS_TYPE cannot be '" . $settingVars->{"ANALYSIS_TYPE"}[0] . "' if CLIENT is not AB\n" if $settingVars->{"ANALYSIS_TYPE"}[0] =~ m/(^Buildmigrations$|^Checkmigrations$)/ && $settingVars->{"CLIENT"}[0] ne "AB";
+if($settingVars->{"ANALYSIS_TYPE"}[0] ne "Aggr")
+{
+	die "JOB_ID=> parameter is required\n" unless defined $settingVars->{"JOB_ID"}[0] && $settingVars->{"JOB_ID"}[0] ne "NULL";
+}
+else
+{
+	if($settingVars->{"CLIENT"}[0] eq "AB")
+	{
+		die "ANALYSIS_TYPE=> second parameter required (Old|New)\n" unless defined $settingVars->{"ANALYSIS_TYPE"}[1] && $settingVars->{"ANALYSIS_TYPE"}[1] =~ m/(^Old$|^New$)/;
+	}
+}
 
 if($settingVars->{"ANALYSIS_TYPE"}[0] =~ m/(^Buildmigrations$|^Checkmigrations$)/)
 {
@@ -135,7 +146,37 @@ my @settings = @{$settingVars->{"SETTINGS"}};
 my $prevMF = $settingVars->{"PREV_MF"}[0];
 my $currMF = $settingVars->{"CURR_MF"}[0];
 
-if($analysisType eq "Projections")
+if($analysisType eq "Aggr")
+{
+	print "picked Aggr\n";
+	if($client eq "AB")
+	{
+		my $states = $settingVars->{"ANALYSIS_TYPE"}[1];
+		if($states eq "Old")
+		{
+			my $aggrSql = "Declare l_vintage_dt	NUMBER := 20200410;
+											l_job_name_suffix  VARCHAR2(80) := '2020Maynewstates';
+								
+								Begin
+									Claims_aggr.Pkg_Aggr_Util_avbstates.Kick_Off_Custom_Aggrs(
+										p_Xwalk_Date => l_vintage_dt,
+										p_Job_Name_Suffix => l_job_name_suffix
+									);
+									Claims_aggr.Pkg_Avb_Trending.Run_All;
+									Claims_aggr.pkg_avb_trending.Create_Trending_Table(p_Vintage_Name => 'DDB_'||l_vintage_dt);
+								End;";
+		}
+		elsif($states eq "New")
+		{
+			
+		}
+	}
+	elsif($client eq "CPM")
+	{
+		
+	}
+}
+elsif($analysisType eq "Projections")
 {
 	my $hgRoot = "/vol/cs/clientprojects/mv_utilities/projCode";
 	if($settingVars->{"FXFILES"}[0] ne "NULL" && $settingVars->{"FXFILES"}[0] =~ m/\//)
@@ -460,7 +501,7 @@ sub runMB
 		{
 			my @symlinkFiles = ();
 			push(@symlinkFiles,qw/cms_poidlist ip_datamatrix poid_volume state_poidlist wk_poidlist poid_attributes_ip/) if $setting eq "IP";
-			push(@symlinkFiles,qw/op_datamatrix poid_attributes_op op_poids.sas7bdat/) if $setting eq "OP";
+			push(@symlinkFiles,qw/op_datamatrix poid_attributes_op op_poids/) if $setting eq "OP";
 			push(@symlinkFiles,qw/asc_datamatrix/) if $setting eq "OfficeASC" || $setting eq "Freestanding";
 			foreach my $y (@symlinkFiles)
 			{
