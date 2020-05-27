@@ -95,6 +95,9 @@ my $settingVars = MiscFunctions::createSettingHash(config=>$config);
 my $memoryHash;
 my $qcScript = $scatterDir . "/ABCPM_monthlyQC.R";
 my $logDir = "logFiles";
+my $oraUser = "claims_aggr";
+my $oraPass = "Hydr0gen2014";
+my $oraInst = "PLDWH2DBR";
 
 #verify settingVars
 foreach my $x (qw/VINTAGE USERNAME PASSWORD INSTANCE AGGREGATION_TABLE CLAIM_PATIENT_TABLE CLIENT ANALYSIS_TYPE PREV_DIR SETTINGS/)
@@ -148,33 +151,158 @@ my $currMF = $settingVars->{"CURR_MF"}[0];
 
 if($analysisType eq "Aggr")
 {
-	print "picked Aggr\n";
+	my $clientJob = $client eq "AB" ? $client . "_" . $settingVars->{"ANALYSIS_TYPE"}[1] : $client;
+	print "Building " . $clientJob . " aggregations...\n";
+	my $date = substr($vintage,0,6);
+	$date++;
+	my @months = qw/Nul Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec Jan/;
+	my $newDate;
+	my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+	$mon++;
+	$year += 1900;
+	my ($schedulerJobName,$aggrSql,$jobIdSql);
 	if($client eq "AB")
 	{
+		$newDate = substr($date,0,4) . $months[substr($date,4,2)];
 		my $states = $settingVars->{"ANALYSIS_TYPE"}[1];
-		if($states eq "Old")
-		{
-			my $aggrSql = "Declare l_vintage_dt	NUMBER := 20200410;
-											l_job_name_suffix  VARCHAR2(80) := '2020Maynewstates';
-								
-								Begin
-									Claims_aggr.Pkg_Aggr_Util_avbstates.Kick_Off_Custom_Aggrs(
-										p_Xwalk_Date => l_vintage_dt,
-										p_Job_Name_Suffix => l_job_name_suffix
-									);
-									Claims_aggr.Pkg_Avb_Trending.Run_All;
-									Claims_aggr.pkg_avb_trending.Create_Trending_Table(p_Vintage_Name => 'DDB_'||l_vintage_dt);
+		my $refreshSql = "Begin
+									update avb_vendors set job_status='PENDING' where last_vend_date > 18000101;
+									update avb_vendors_states set job_status='PENDING' where last_vend_date > 18000101;
+									update avb_vendors set last_vend_date=20010101 where job_status='PENDING';
+									update avb_vendors_states set last_vend_date=20010101 where job_status='PENDING';
+									commit;
 								End;";
-		}
-		elsif($states eq "New")
+		MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$refreshSql,quiet=>"Y");
+		if($states eq "New")
 		{
-			
+			$schedulerJobName = join("_","AVB",$newDate,"newstates",$year . $mon . $mday,$hour,$min);
+			$aggrSql = "Begin
+								dbms_scheduler.create_job
+								(
+									job_name => '" . $schedulerJobName . "',
+									job_type => 'PLSQL_BLOCK',
+									job_action => 'Declare l_vintage_dt	NUMBER := " . $vintage . ";
+																	l_job_name_suffix  VARCHAR2(80) := ''" . $newDate . "newstates'';
+														Begin
+															Claims_aggr.Pkg_Aggr_Util_avbstates.Kick_Off_Custom_Aggrs(
+																p_Xwalk_Date => l_vintage_dt,
+																p_Job_Name_Suffix => l_job_name_suffix
+															);
+															Claims_aggr.Pkg_Avb_Trending.Run_All;
+															Claims_aggr.pkg_avb_trending.Create_Trending_Table(p_Vintage_Name => ''DDB_''||l_vintage_dt);
+														End;',
+									start_date => sysdate,
+									enabled => TRUE,  
+									auto_drop => TRUE,
+									comments => 'one-time job'
+								);
+							end;";
+			$jobIdSql = "select max(job_id) as job_id from pxdx_jobs t where t.job_type = 'AVB' and t.job_name = 'AVB " . $newDate . "newstates'";
 		}
+		elsif($states eq "Old")
+		{
+			$schedulerJobName = join("_","AVB",$newDate,"oldstates",$year . $mon . $mday,$hour,$min);
+			$aggrSql = "Begin
+								dbms_scheduler.create_job
+								(
+									job_name => '" . $schedulerJobName . "',
+									job_type => 'PLSQL_BLOCK',
+									job_action => 'Declare l_vintage_dt NUMBER := " . $vintage . ";
+																	l_job_name_suffix  VARCHAR2(80) := ''" . $newDate . "oldstates'';
+														Begin
+															Claims_aggr.Pkg_Aggr_Util.Kick_Off_Custom_Aggrs(
+																p_Xwalk_Date => l_vintage_dt,
+																p_Job_Name_Suffix => l_job_name_suffix
+															);
+															End;',
+									start_date => sysdate,
+									enabled => TRUE,  
+									auto_drop => TRUE,
+									comments => 'one-time job'
+								);
+							end;";
+			$jobIdSql = "select max(job_id) as job_id from pxdx_jobs t where t.job_type = 'AVB' and t.job_name = 'AVB " . $newDate . "oldstates'";
+		}
+		MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$aggrSql,quiet=>"Y");
+		print "\tAggregation started. SchedulerJobName: " . $schedulerJobName . "...\n";
+		#Wait for the job to finish
+		my $status = getJobStatus(schedulerJobName=>$schedulerJobName);
+		while($status)
+		{
+			sleep 60;
+			$status = getJobStatus(schedulerJobName=>$schedulerJobName);
+		}
+		my @jidKey = qw/JOB_ID/;
+		$memoryHash->{"AVB_STATES_JID"} = MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,oraDataKey=>\@jidKey,sql=>$jobIdSql,quiet=>"Y");
+		my $jobId;
+		foreach my $x (keys %{$memoryHash->{"AVB_STATES_JID"}})
+		{
+			$jobId = $x;
+		}
+		refreshCfg(jobId=>$jobId);
+		print "\tAggregation finished. Produced Job_Id: " . $jobId . "\n";
 	}
 	elsif($client eq "CPM")
 	{
-		
+		#CPM has 2 deliverables, a normal splitter, and an enhanced with Emdeon. The initiate package generates the two job IDs, and the execute package creates the aggregations
+		#Running aggregations will assume you are building off normal, and generate a config directory for the Enhanced
+		$newDate = $months[substr($date,4,2)] . substr($date,0,4);
+		$schedulerJobName = join("_","CPM",$newDate,$year . $mon . $mday,$hour,$min);
+		my $initSql = "Declare t number;
+								Begin
+									t:= claims_aggr.pkg_cpm_aggr_pxdx.Initiate_Cpm(
+										p_Xwalk_Dt =>'" . join("-",substr($vintage,6,2),$months[substr($date,4,2)-1],$year) . "', p_Job_Nm =>'" . $months[substr($date,4,2)] . $year . " Deliverable');
+										dbms_output.put_line(t);
+									End;";
+		MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$initSql,quiet=>"Y");
+		$jobIdSql = "select max(job_id) as job_id from pxdx_jobs t where t.job_type = 'CPM' and t.job_name = '" . $months[substr($date,4,2)] . $year . " Deliverable'";
+		my $emdeonJobIdSql = "select max(job_id) as job_id from pxdx_jobs t where t.job_type = 'CPM' and t.job_name = '" . $months[substr($date,4,2)] . $year . " Deliverable with emdeon'";
+		my @jidKey = qw/JOB_ID/;
+		$memoryHash->{"CPM_JID"} = MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,oraDataKey=>\@jidKey,sql=>$jobIdSql,quiet=>"Y");
+		$memoryHash->{"CPM_EJID"} = MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,oraDataKey=>\@jidKey,sql=>$emdeonJobIdSql,quiet=>"Y");
+		my ($jobId,$eJobId);
+		foreach my $x (keys %{$memoryHash->{"CPM_JID"}})
+		{
+			$jobId = $x;
+		}
+		foreach my $x (keys %{$memoryHash->{"CPM_EJID"}})
+		{
+			$eJobId = $x;
+		}
+		$aggrSql = "Begin
+							dbms_scheduler.create_job
+							(
+								job_name => '" . $schedulerJobName . "',
+								job_type => 'PLSQL_BLOCK',
+								job_action => 'Begin claims_aggr.pkg_cpm_aggr_pxdx.Execute_Cpm(p_Job_Id =>" . $jobId . "); End;',
+								start_date => sysdate,
+								enabled => TRUE,  
+								auto_drop => TRUE,
+								comments => 'one-time job'
+							);
+						end;";
+		MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$aggrSql,quiet=>"Y");
+		print "\tAggregation started. SchedulerJobName: " . $schedulerJobName . "...\n";
+		#Wait for the job to finish
+		my $status = getJobStatus(schedulerJobName=>$schedulerJobName);
+		while($status)
+		{
+			sleep 60;
+			$status = getJobStatus(schedulerJobName=>$schedulerJobName);
+		}
+		refreshCfg(jobId=>$jobId);
+		my $month = sprintf("%02d",$mon);
+		my $eDir = join("_",$year,$month,"15","PxDx","Enhanced");
+		system("mkdir","-p",$eDir);
+		system("cp","-r","config",$eDir);
+		my $currDir = `pwd`;
+		$currDir = MiscFunctions::cleanLine(line=>$currDir);
+		chdir($eDir);
+		refreshCfg(jobId=>$eJobId,updatePrevDir=>"Y");
+		chdir($currDir);
+		print "\tAggregation finished. Produced Job_Id: " . $jobId . ", and Enhanced Job_Id: " . $eJobId . "\n";
 	}
+	print "done\n";
 }
 elsif($analysisType eq "Projections")
 {
@@ -414,6 +542,116 @@ my $runTime = $timeEnd - $timeBegin;
 print "\nProcess Complete: " . $0 . "\n";
 my $minutes = $runTime/60;
 print "Job took " . $minutes ." minutes\n";
+
+sub refreshCfg
+{
+	my %args = @_;
+	my $jobId = $args{jobId} || die "jobId=> parameter is required\n";
+	my $updatePrevDir = $args{updatePrevDir} || "";
+	
+	my $vintage = $settingVars->{"VINTAGE"}[0] ne "NULL" ? $settingVars->{"VINTAGE"}[0] : "";
+	my $username = $settingVars->{"USERNAME"}[0] ne "NULL" ? $settingVars->{"USERNAME"}[0] : "";
+	my $password = $settingVars->{"PASSWORD"}[0] ne "NULL" ? $settingVars->{"PASSWORD"}[0] : "";
+	my $instance = $settingVars->{"INSTANCE"}[0] ne "NULL" ? $settingVars->{"INSTANCE"}[0] : "";
+	my $aggrTable = $settingVars->{"AGGREGATION_TABLE"}[0] ne "NULL" ? $settingVars->{"AGGREGATION_TABLE"}[0] : "";
+	my $claimPatTable = $settingVars->{"CLAIM_PATIENT_TABLE"}[0] ne "NULL" ? $settingVars->{"CLAIM_PATIENT_TABLE"}[0] : "";
+	my $fxFiles = $settingVars->{"FXFILES"}[0] ne "NULL" ? $settingVars->{"FXFILES"}[0] : "";
+	my $preserveSas = $settingVars->{"PRESERVE_SAS"}[0] ne "NULL" ? $settingVars->{"PRESERVE_SAS"}[0] : "";
+	my $client = $settingVars->{"CLIENT"}[0] ne "NULL" ? $settingVars->{"CLIENT"}[0] : "";
+	my $analysisType = $settingVars->{"ANALYSIS_TYPE"}[0] ne "NULL" ? join(" ", @{$settingVars->{"ANALYSIS_TYPE"}}) : "";
+	my $prevDir = $settingVars->{"PREV_DIR"}[0] ne "NULL" ? $settingVars->{"PREV_DIR"}[0] : "";
+	if($updatePrevDir)
+	{
+		die "Cannot update null PREV_DIR variable\n" if $prevDir eq "";
+		$prevDir =~ s/\/$//;
+		$prevDir .= "_Enhanced/";
+		#since this option is specifically for updating the CPM Enhanced cfg file, set analysisType to Projections so you don't accidentally re-run CPM aggregations in the Enhanced version
+		$analysisType = "Projections";
+	}
+	my $settings = $settingVars->{"SETTINGS"}[0] ne "NULL" ? join(" ",@{$settingVars->{"SETTINGS"}}) : "";
+	my $bucketPath = $settingVars->{"BUCKET_PATH"}[0] ne "NULL" ? $settingVars->{"BUCKET_PATH"}[0] : "";
+	my $prevMF = $settingVars->{"PREV_MF"}[0] ne "NULL" ? $settingVars->{"PREV_MF"}[0] : "";
+	my $currMF = $settingVars->{"CURR_MF"}[0] ne "NULL" ? $settingVars->{"CURR_MF"}[0] : "";
+	
+	my $cfg = "config";
+	system("mkdir","-p",$cfg . "/logFiles");
+	open my $lofh, ">>", $cfg . "/logFiles/avbJobLogs.txt";
+	print $lofh $client . " aggregations generated with Job_Id: " . $jobId . "\n";
+	close $lofh;
+	
+	open my $cfh, ">", $cfg . "/settingsNew.cfg";
+	print $cfh "#-------------PxDx_Jobs settings-------------\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd\n";
+	print $cfh "VINTAGE = " . $vintage . "\n";
+	print $cfh "\n";
+	print $cfh "# JOB_ID\n";
+	print $cfh "JOB_ID = " . $jobId . "\n";
+	print $cfh "\n";
+	print $cfh "#-------------Oracle settings-------------\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Username for the claims database. 99% of the time you should NOT change this\n";
+	print $cfh "USERNAME = " . $username . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Password for the claims database. 99% of the time you should NOT change this\n";
+	print $cfh "PASSWORD = " . $password . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Instance for the claims database. 99% of the time you should NOT change this\n";
+	print $cfh "INSTANCE = " . $instance . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Aggregation Table for the Aggregation process. 99% of the time you should NOT change this\n";
+	print $cfh "AGGREGATION_TABLE = " . $aggrTable . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Claim Patient Table for the Aggregation process. 99% of the time you should NOT change this\n";
+	print $cfh "CLAIM_PATIENT_TABLE = " . $claimPatTable . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Location of FXFiles. 99% of the time you should NOT change this\n";
+	print $cfh "FXFILES = " . $fxFiles . "\n";
+	print $cfh "\n";
+	print $cfh "# OPTIONAL: Flag for if you want to preserve your sas databases. \"Y\" to enable, all other values will default to cleaning up sas files\n";
+	print $cfh "PRESERVE_SAS =	" . $preserveSas . "\n";
+	print $cfh "\n";
+	print $cfh "#-------------Run_Inputs settings-------------\n";
+	print $cfh "# REQUIRED: Client you are running multiBucketSplitter for (AB|CPM)\n";
+	print $cfh "CLIENT = " . $client . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: What phase of multiBucketSplitter you want to run (Aggr|Projections|QC). For AB (Buildmigrations|Checkmigrations). If Aggr and AB, also supply Old|New\n";
+	print $cfh "ANALYSIS_TYPE = " . $analysisType . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Location of Previous deliverable\n";
+	print $cfh "PREV_DIR = " . $prevDir . "\n";
+	print $cfh "\n";
+	print $cfh "# REQUIRED: Settings you wish to build (IP|OP|Freestanding|OfficeASC|SNF)\n";
+	print $cfh "SETTINGS = " . $settings . "\n";
+	print $cfh "\n";
+	print $cfh "# OPTIONAL: Location of an alternate bucket file. If you want to run a subset of the normal buckets\n";
+	print $cfh "BUCKET_PATH = " . $bucketPath . "\n";
+	print $cfh "\n";
+	print $cfh "# OPTIONAL: Location of Previous MasterFile (Used for Buildmigrations)\n";
+	print $cfh "PREV_MF = " . $prevMF . "\n";
+	print $cfh "\n";
+	print $cfh "# OPTIONAL: Location of Current MasterFile (Used for Buildmigrations)\n";
+	print $cfh "CURR_MF = " . $currMF . "\n";
+	close $cfh;
+	system("mv " . $cfg . "/settingsNew.cfg " . $cfg . "/settings.cfg");
+}
+
+sub getJobStatus
+{
+	my %args = @_;
+	my $schedulerJobName = $args{schedulerJobName} || die "schedulerJobName=> parameter is required\n";
+	my $jobStatusSql = "select * from user_scheduler_jobs t where t.job_name = '" . uc($schedulerJobName) . "'";
+	my @jobStatusKey = qw/JOB_NAME/;
+	my $jobStatusRaw = MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$jobStatusSql,oraDataKey=>\@jobStatusKey,quiet=>"Y",dontDie=>"Y") || -1;
+	if($jobStatusRaw == -1)
+	{
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
 
 sub runMB
 {
