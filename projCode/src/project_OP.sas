@@ -207,7 +207,7 @@ quit;
 %poidcnt(src=FL, 	aggrname='FL_OP');
 %poidcnt(src=NY, 	aggrname='NY_OP');
 %poidcnt(src=CA,    aggrname='CA_OP');
-%poidcnt(src=NJ,    aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's aggrement allows them to report counts */
+%poidcnt(src=NJ,    aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's agreement allows them to report counts */
 %poidcnt(src=WKMX,  aggrname='WKMX_OP');
 %poidcnt(src=WKUB,  aggrname='WKUB_OP');
 
@@ -240,9 +240,19 @@ run;
 %end;
 %else %do;
 
+/* Add logic to remove WKMX POIDs that should really be ASC POIDs, so, remove POIDS in ASC Matrix or have org_type ASC */
+proc sort data = matrloc.asc_datamatrix out = asc_matrix; by HMS_POID; run;
+proc sort data = fxfiles.asc_poids_&Vintage. out = asc_poids; by HMS_POID; run;
+
+data mxop_clean;
+  merge mxop ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
+  by HMS_POID;
+  if a and not b and not c then output;
+  run;
+
 data claim.wk_op_poid_migs;
 length source $4.;
-merge ubop(rename=(&counttype._count=wkub_count)) mxop(rename=(&counttype._count=wk1500_count));
+merge ubop(rename=(&counttype._count=wkub_count)) mxop_clean(rename=(&counttype._count=wk1500_count));
 by hms_poid ;
 if max(wkub_count, wk1500_count)=wkub_count then do;
 	wk_count=wkub_count;
@@ -280,14 +290,17 @@ run;
 data claim.wk_op_migs(drop=source);
 merge wk_op_migs poid_source;
 by hms_poid;
+
 if source='wkub' then do;
 	if wkub_count^=. then wk_count=wkub_count;
 	else wk_count=max(wk1500_count,wkub_count);
+	output;
 end;
 
 else if source='wkmx' then do;
 	if wk1500_count^=. then wk_count=wk1500_count;
 	else wk_count=max(wk1500_count,wkub_count);
+	output;
 end;
 run;
 %mend;
