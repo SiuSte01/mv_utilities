@@ -166,10 +166,10 @@ if($analysisType eq "Aggr")
 		$newDate = substr($date,0,4) . $months[substr($date,4,2)];
 		my $states = $settingVars->{"ANALYSIS_TYPE"}[1];
 		my $refreshSql = "Begin
-									update avb_vendors set job_status='PENDING' where last_vend_date > 18000101;
-									update avb_vendors_states set job_status='PENDING' where last_vend_date > 18000101;
-									update avb_vendors set last_vend_date=20010101 where job_status='PENDING';
-									update avb_vendors_states set last_vend_date=20010101 where job_status='PENDING';
+									update avb_vendors set job_status='PENDING' where last_vend_date > 18000102;
+									update avb_vendors_states set job_status='PENDING' where last_vend_date > 18000102;
+									update avb_vendors set last_vend_date=20010102 where job_status='PENDING';
+									update avb_vendors_states set last_vend_date=20010102 where job_status='PENDING';
 									commit;
 								End;";
 		MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$refreshSql,quiet=>"Y");
