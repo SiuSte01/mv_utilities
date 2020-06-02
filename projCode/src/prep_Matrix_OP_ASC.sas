@@ -557,6 +557,7 @@ merge op_datamatrix ( in = op keep = HMS_POID ORG_TYPE )
       asc_datamatrix ( in = asc keep = HMS_POID ORG_TYPE CMS_FLAG );
 by HMS_POID;
 
+if CMS_FLAG = . then CMS_FLAG = 0;
 if op and asc then do;
   if find( ORG_TYPE, "Ambulatory" ) > 0 or CMS_FLAG = 1 then output asc_poid_list;
   else output op_poid_list;
