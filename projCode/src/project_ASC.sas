@@ -126,6 +126,14 @@ libname Inputs %unquote(%str(%'&FXFILES%'));
  not in fxfiles */
 libname matrloc '.';
 
+/****modify: 2020/06/04 keep poids from asc only****/
+data asc_poids;
+set matrloc.asc_datamatrix(keep=hms_poid) Inputs.asc_poids_&Vintage(keep=hms_poid);
+run;
+
+proc sort data=asc_poids nodupkey;
+by HMS_POID; 
+run;
 
 /* Pull data from aggregations tables */
 /* 11.18.2016 the % at beginning and end of ASC does not cause problems
@@ -144,11 +152,13 @@ proc sql ;
 		and (aggr_name like '%ASC%'
 		or aggr_name like '%FL%' or aggr_name like '%NY%' or aggr_name like '%CA%')
 		and BUCKET_NAME = %unquote(%str(%'&Bucket%'))
+		order by org_id
 		)
 		;
 
 	disconnect from oracle ;
 quit ;
+
 
 proc sql ;
 	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE.) ;
@@ -160,11 +170,26 @@ proc sql ;
 		where job_id = &job_id. and aggr_level = 'DOCORGLEVEL'
 		and (aggr_name like '%ASC%')
 		and BUCKET_NAME = %unquote(%str(%'&Bucket%'))
+		order by org_id
 		)
 		;
 
 	disconnect from oracle ;
 quit ;
+
+/****Note: keep asc poids ***/
+
+data Org_counts;
+merge Org_counts(in=a) asc_poids(in=b rename=(hms_poid=org_id));
+by org_id;
+if a and b;
+run;
+
+data Doc_Org_counts;
+merge Doc_Org_counts(in=a) asc_poids(in=b rename=(hms_poid=org_id));
+by org_id;
+if a and b;
+run;
 
 proc sql ;
 	connect to oracle(user=&USERNAME. password=&PASSWORD. path=&INSTANCE.) ;

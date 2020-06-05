@@ -95,17 +95,18 @@ libname claim '.';
  not in fxfiles */
 libname matrloc '.';
 
+proc sort data = matrloc.asc_datamatrix out = asc_matrix; by HMS_POID; run;
+proc sort data = fxfiles.asc_poids_&Vintage. out = asc_poids; by HMS_POID; run;
+
 
 /* Consolidate all external macros here*/
-
-
 
 /* This part comes from opclaims.sas */
 %macro piidcnt(src=, aggrname=);
 
 proc sql;
 	connect to oracle(user=&USERNAME password=&PASSWORD path=&INSTANCE);
-	create table claim.&src._op
+	create table &src._op
 	as select * from connection to oracle
 		(select
 		h.doc_id as hms_piid,
@@ -118,10 +119,17 @@ proc sql;
 		and h.aggr_name=&aggrname
 		and h.aggr_level='DOCORGLEVEL'
 		and h.job_id=&AGGRID
+		order by h.org_id
 		);
 	disconnect from oracle ;
 quit ;
 
+data claim.&src._op;
+  merge &src._op ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
+  by HMS_POID;
+  if a and not b and not c then output;
+  run;
+  
 %mend;
 
 %piidcnt(src=WKUB, aggrname='WKUB_OP');
@@ -154,7 +162,7 @@ quit;
 
 proc sql ;
 	connect to oracle(user=&username password=&password path=&instance) ;
-	create table claim.&src._payer
+	create table &src._payer
 	as select * from connection to oracle
 		(select    
 		h.org_id as hms_poid ,					 
@@ -165,10 +173,16 @@ proc sql ;
 		and h.aggr_name=&aggrname
 		and h.aggr_level='ORGLEVEL'
 		and h.job_id=&AGGRID
+		order by h.org_id
 		);
 	disconnect from oracle ;
 quit ;
 
+data claim.&src._payer;
+  merge &src._payer ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
+  by HMS_POID;
+  if a and not b and not c then output;
+  run;
 %mend;
 
 %payer(src=NY,   aggrname='NY_OP');
@@ -184,7 +198,7 @@ quit ;
 
 proc sql ;
 	connect to oracle(user=&username password=&password path=&instance) ;
-	create table claim.&src._op_poid_migs
+	create table &src._op_poid_migs
 	as select * from connection to oracle
 		(select
 		h.org_id as hms_poid,
@@ -198,6 +212,12 @@ proc sql ;
 		);
 	disconnect from oracle ;
 quit ;
+
+data claim.&src._op_poid_migs;
+  merge &src._op_poid_migs ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
+  by HMS_POID;
+  if a and not b and not c then output;
+  run;
 
 %mend;
 quit;
@@ -241,8 +261,10 @@ run;
 %else %do;
 
 /* Add logic to remove WKMX POIDs that should really be ASC POIDs, so, remove POIDS in ASC Matrix or have org_type ASC */
+/*
 proc sort data = matrloc.asc_datamatrix out = asc_matrix; by HMS_POID; run;
 proc sort data = fxfiles.asc_poids_&Vintage. out = asc_poids; by HMS_POID; run;
+*/
 
 data mxop_clean;
   merge mxop ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
