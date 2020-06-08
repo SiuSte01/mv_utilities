@@ -613,6 +613,7 @@ sub buildFolders
 				MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Hospital/OP");
 				MiscFunctions::symlinkFile(file=>"op_datamatrix.sas7bdat",path=>$bucket . "/" . $projections . "/Hospital/OP");
 				MiscFunctions::symlinkFile(file=>"poid_attributes_op.sas7bdat",path=>$bucket . "/" . $projections . "/Hospital/OP");
+				MiscFunctions::symlinkFile(file=>"asc_datamatrix.sas7bdat",path=>$bucket . "/" . $projections . "/Hospital/OP");
 			}
 		}
 		if(exists $options->{"hha"} or $options->{"hospice"} or $options->{"snf"})
