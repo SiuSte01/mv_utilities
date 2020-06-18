@@ -739,7 +739,7 @@ sub runMB
 		{
 			my @symlinkFiles = ();
 			push(@symlinkFiles,qw/cms_poidlist ip_datamatrix poid_volume state_poidlist wk_poidlist poid_attributes_ip/) if $setting eq "IP";
-			push(@symlinkFiles,qw/op_datamatrix poid_attributes_op op_poids/) if $setting eq "OP";
+			push(@symlinkFiles,qw/op_datamatrix poid_attributes_op op_poids asc_datamatrix/) if $setting eq "OP";
 			push(@symlinkFiles,qw/asc_datamatrix/) if $setting eq "OfficeASC" || $setting eq "Freestanding";
 			foreach my $y (@symlinkFiles)
 			{
