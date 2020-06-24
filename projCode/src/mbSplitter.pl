@@ -239,6 +239,17 @@ if($analysisType eq "Aggr")
 		{
 			$jobId = $x;
 		}
+		#update Job_Vendors for oldstates
+		if($states eq "Old")
+		{
+			my $updateJVSql = "Begin
+										update job_vendors set first_vend_date = 20140101, last_vend_date = 20141231 where job_id = " . $jobId . " and vendor_id in (11,12,13);
+										update job_vendors set first_vend_date = 20130101, last_vend_date = 20131231 where job_id = " . $jobId . " and vendor_id in (20,21);
+										update job_vendors set first_vend_date = 18000102, last_vend_date = 18000101 where job_id = " . $jobId . " and vendor_type = 'ABSTATE';
+										commit;
+									End;";
+			MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$updateJVSql,quiet=>"Y");
+		}
 		refreshCfg(jobId=>$jobId);
 		print "\tAggregation finished. Produced Job_Id: " . $jobId . "\n";
 	}
