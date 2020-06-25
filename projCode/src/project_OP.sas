@@ -209,6 +209,7 @@ proc sql ;
 		and h.aggr_name=&aggrname
 		and h.aggr_level='ORGLEVEL'
 		and h.job_id=&AGGRID
+		order by h.org_id
 		);
 	disconnect from oracle ;
 quit ;
