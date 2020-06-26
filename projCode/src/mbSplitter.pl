@@ -248,7 +248,9 @@ if($analysisType eq "Aggr")
 										update job_vendors set first_vend_date = 18000102, last_vend_date = 18000101 where job_id = " . $jobId . " and vendor_type = 'ABSTATE';
 										commit;
 									End;";
+			print "\t\tUpdating Job_Vendors for " . $clientJob . " Aggregation...";
 			MiscFunctions::getOracleSql(oraInstance=>$oraInst,oraUser=>$oraUser,oraPass=>$oraPass,sql=>$updateJVSql,quiet=>"Y");
+			print "done\n";
 		}
 		refreshCfg(jobId=>$jobId);
 		print "\tAggregation finished. Produced Job_Id: " . $jobId . "\n";
