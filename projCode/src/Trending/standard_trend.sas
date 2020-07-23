@@ -1013,11 +1013,13 @@ run;
 
 	%if &facility. = 1 %then %do;
 
+	proc sql;
 	create table buckets_px2_poid as 
 	select BUCKET, HMS_POID, COUNTING, YEAR, WEEK, count(distinct COUNT_ID) as COUNT
 	from buckets_px1
 	group by BUCKET, HMS_POID, COUNTING, YEAR, WEEK
 	order by BUCKET, HMS_POID, COUNTING, YEAR, WEEK;
+	quit;
 
 	proc sort data=buckets_px2_poid;
 	by YEAR WEEK;
@@ -1032,11 +1034,13 @@ run;
 	select BUCKET, HMS_POID, COUNTING, YEAR, MONTH, DAY, WEEK_OF as WEEK, COUNT from buckets_px3_poid;
 	quit;
 
+	proc sql;
 	create table buckets_dx2_poid as 
 	select BUCKET, HMS_POID, COUNTING, YEAR, WEEK, count(distinct COUNT_ID) as COUNT
 	from buckets_dx1
 	group by BUCKET, HMS_POID, COUNTING, YEAR, WEEK
 	order by BUCKET, HMS_POID, COUNTING, YEAR, WEEK;
+	quit;
 
 	proc sort data=buckets_dx2_poid;
 	by YEAR WEEK;
@@ -1063,11 +1067,13 @@ run;
 
 	%if &practitioner. = 1 %then %do;
 
+	proc sql;
 	create table buckets_px2_piid as 
 	select BUCKET, HMS_PIID, COUNTING, YEAR, WEEK, count(distinct COUNT_ID) as COUNT
 	from buckets_px1
 	group by BUCKET, HMS_PIID, COUNTING, YEAR, WEEK
 	order by BUCKET, HMS_PIID, COUNTING, YEAR, WEEK;
+	quit;
 
 	proc sort data=buckets_px2_piid;
 	by YEAR WEEK;
@@ -1079,14 +1085,16 @@ run;
 	run;
 	proc sql;
 	create table buckets_px4_piid as
-	select BUCKET, HMS_PIID, COUNTING, YEAR, MONTH, DAY, WEEK_OF as WEEK, COUNT from buckets_px3_poid;
+	select BUCKET, HMS_PIID, COUNTING, YEAR, MONTH, DAY, WEEK_OF as WEEK, COUNT from buckets_px3_piid;
 	quit;
 
+	proc sql;
 	create table buckets_dx2_piid as 
 	select BUCKET, HMS_PIID, COUNTING, YEAR, WEEK, count(distinct COUNT_ID) as COUNT
 	from buckets_dx1
 	group by BUCKET, HMS_PIID, COUNTING, YEAR, WEEK
 	order by BUCKET, HMS_PIID, COUNTING, YEAR, WEEK;
+	quit;
 
 	proc sort data=buckets_dx2_piid;
 	by YEAR WEEK;
@@ -1098,7 +1106,7 @@ run;
 	run;
 	proc sql;
 	create table buckets_dx4_piid as
-	select BUCKET, HMS_PIID, COUNTING, YEAR, MONTH, DAY, WEEK_OF as WEEK, COUNT from buckets_dx3_poid;
+	select BUCKET, HMS_PIID, COUNTING, YEAR, MONTH, DAY, WEEK_OF as WEEK, COUNT from buckets_dx3_piid;
 	quit;
 
 	data buckets_all_piid;
