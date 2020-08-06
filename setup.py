@@ -9,18 +9,23 @@ setup(name='mvUtil',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
+			'keatonCode/Cabell': ['*'],
+				'keatonCode/Cabell/Testing': ['*'],
 			'projCode/src': ['dopatients.pl','multiBucket_ABCPM.pl','project_PAC.pl','sendemail.pl','*.sas'],
 				'projCode/src/AdvisoryBoard': ['*'],
 				'projCode/src/INA': ['*'],
 				'projCode/src/Trending': ['*'],
 		},
       packages=[
+			'keatonCode/Cabell',
+				'keatonCode/Cabell/Testing',
 			'projCode/src',
 				'projCode/src/AdvisoryBoard',
 				'projCode/src/INA',
 				'projCode/src/Trending'
 			],
       scripts=[
+			'keatonCode/Cabell/Cabell_Create_Delivery_Folders',
 			'projCode/src/AdvisoryBoard/combine_inadirs.pl',
 			'projCode/src/AdvisoryBoard/combinesummaries_input.pl',
 			'projCode/src/AdvisoryBoard/comparesizes_input.pl',
