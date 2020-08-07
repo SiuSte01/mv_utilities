@@ -5,6 +5,10 @@ diffInvest
 Documentation
 InputDataFiles*
 keatonCode/(Archive)
+rhopsonCode/[.2CDFGHINPRTUVabcdfghilnpqrstvwx]*
+rhopsonCode/un*
+rhopsonCode/utilities/[CEFHMTUVabcfgimprstuvwz]*
+rhopsonCode/utilities/qc_projections_archive
 TL
 unprojected_raw_claims
 *README*
