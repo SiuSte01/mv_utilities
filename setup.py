@@ -16,6 +16,7 @@ setup(name='mvUtil',
 				'projCode/src/AdvisoryBoard': ['*'],
 				'projCode/src/INA': ['*'],
 				'projCode/src/Trending': ['*'],
+			'rhopsonCode/utilities': ['*'],
 		},
       packages=[
 			'keatonCode/Cabell',
@@ -24,7 +25,8 @@ setup(name='mvUtil',
 			'projCode/src',
 				'projCode/src/AdvisoryBoard',
 				'projCode/src/INA',
-				'projCode/src/Trending'
+				'projCode/src/Trending',
+			'rhopsonCode/utilities'
 			],
       scripts=[
 			'keatonCode/Cabell/Cabell_Create_Delivery_Folders',
