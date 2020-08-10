@@ -1,0 +1,213 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $qcProjScript;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$qcProjScript = $mvDir . "/rhopsonCode/utilities/qc_projections_v3.sh";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$qcProjScript = $sitePath . "/rhopsonCode/utilities/qc_projections_v3.sh";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+GetOptions(
+);
+
+print $qcProjScript . "\n";
+#my $rScript = generateRScript();
+#system("R CMD BATCH --vanilla " . $rScript);
+#system("rm " . $rScript);
+
+system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $date = $args{date} || die "date=> parameter is required\n";
+	my $returnFile = "INA_Setting_Comparison_CPM.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "#Manually change date\n";
+	print $ofh "date<-\"" . $date . "\"\n";
+	print $ofh "\n";
+	print $ofh "#Run this command from main CPM folder (/vol/cs/clientprojects/CPM)\n";
+	print $ofh "ina.settings.matches<-Sys.glob(paste(\"/vol/cs/clientprojects/CPM/\",date,\"_CPM_INAs_PxDxs/INA/CPM_INA*/config/settings.cfg\",sep=\"\"))\n";
+	print $ofh "ina.config.matches<-Sys.glob(paste(\"/vol/cs/clientprojects/CPM/\",date,\"_CPM_INAs_PxDxs/INA/CPM_INA*/config/networkConfigSettings.tab\",sep=\"\"))\n";
+	print $ofh "ina.claims.matches<-Sys.glob(paste(\"/vol/cs/clientprojects/CPM/\",date,\"_CPM_INAs_PxDxs/INA/CPM_INA*/config/claimSettings.tab\",sep=\"\"))\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "#Set up empty data objects to store data\n";
+	print $ofh "vintage<-data.frame(vintage=as.Date(character()), stringsAsFactors=FALSE)\n";
+	print $ofh "upper<-data.frame(Upper_Claim=character(), stringsAsFactors=FALSE)\n";
+	print $ofh "lower<-data.frame(Lower_Claim=character(), stringsAsFactors=FALSE)\n";
+	print $ofh "queue<-data.frame(Queue=character(),stringsAsFactors=FALSE)\n";
+	print $ofh "cpm.job.name<-data.frame(CPM_Job_Name=character(),stringsAsFactors=FALSE)\n";
+	print $ofh "\n";
+	print $ofh "sink(\"INA_Summary.txt\")\n";
+	print $ofh "#For each INA, print out settings\n";
+	print $ofh "for (i in 1:length(ina.config.matches)){\n";
+	print $ofh "  config.settings <- read.table(ina.config.matches[i],header=T,sep=\"\\t\")\n";
+	print $ofh "  network.claim.settings <- read.table(ina.claims.matches[i],header=T,sep=\"\\t\")\n";
+	print $ofh "  settings <- read.table(ina.settings.matches[i],as.is=T,fill=T)\n";
+	print $ofh "  \n";
+	print $ofh "  #Change settings file to matrix so column names aren't printed in results\n";
+	print $ofh "  mat.settings1 <- as.matrix(settings)\n";
+	print $ofh "  mat.settings2 <- matrix(mat.settings1, ncol = ncol(settings), dimnames = NULL)\n";
+	print $ofh "  \n";
+	print $ofh "  #Find needed rows in settings files\n";
+	print $ofh "  vintage.row<-grep(\"VINTAGE\",mat.settings2)\n";
+	print $ofh "  upper.claim.row<-grep(\"UPPER\",mat.settings2)\n";
+	print $ofh "  lower.claim.row<-grep(\"LOWER\",mat.settings2)\n";
+	print $ofh "  queue.row<-grep(\"JOB_QUEUE\",mat.settings2)\n";
+	print $ofh "  cpm.jobname.row<-grep(\"JOB_NAME\",mat.settings2)\n";
+	print $ofh "  \n";
+	print $ofh "  #Print summary for each INA\n";
+	print $ofh "  cat(\"Network Name:\", levels(config.settings\$NETWORK_NAME),\"\\n\")\n";
+	print $ofh "  cat(\"\\tNetwork Type:\", levels(config.settings\$NETWORK_TYPE),\"\\n\")\n";
+	print $ofh "  cat(\"\\tVintage:\",mat.settings2[vintage.row,3],\"\\n\")\n";
+	print $ofh "  cat(\"\\tVendor:\", levels(network.claim.settings\$VENDOR_NAME),\"\\n\")\n";
+	print $ofh "  cat(\"\\tSettings:\", levels(network.claim.settings\$SETTINGS),\"\\n\")\n";
+	print $ofh "  cat(\"\\tQuarters:\", levels(as.factor(config.settings\$LINK_QTRS)),\"\\n\")\n";
+	print $ofh "  cat(\"\\tUpper Claim Limit:\",mat.settings2[upper.claim.row,3],\"\\n\")\n";
+	print $ofh "  cat(\"\\tLower Claim Limit:\",mat.settings2[lower.claim.row,3],\"\\n\")\n";
+	print $ofh "  cat(\"\\tINA Queue:\",mat.settings2[queue.row,3],\"\\n\\n\")\n";
+	print $ofh "  \n";
+	print $ofh "  \n";
+	print $ofh "  #Create files with all vintages, upper claims dates, lower claims dates, and queue listed\n";
+	print $ofh "  #Note: These variables are saved so that frequencies can be run below\n";
+	print $ofh "  \n";
+	print $ofh "  vintage.line<-(settings[vintage.row,3])\n";
+	print $ofh "  vintage<-rbind(vintage,as.data.frame(vintage.line))\n";
+	print $ofh "  vintage<-droplevels(vintage)\n";
+	print $ofh "  \n";
+	print $ofh "  upper.line<-(settings[upper.claim.row,3])\n";
+	print $ofh "  upper<-rbind(upper,as.data.frame(upper.line))\n";
+	print $ofh "  upper<-droplevels(upper)\n";
+	print $ofh "  \n";
+	print $ofh "  lower.line<-(settings[lower.claim.row,3])\n";
+	print $ofh "  lower<-rbind(lower,as.data.frame(lower.line))\n";
+	print $ofh "  lower<-droplevels(lower)\n";
+	print $ofh "  \n";
+	print $ofh "  queue.line<-(settings[queue.row,3])\n";
+	print $ofh "  queue<-rbind(queue,as.data.frame(queue.line))\n";
+	print $ofh "  queue<-droplevels(queue)\n";
+	print $ofh "  \n";
+	print $ofh "  #For CPM project, print job name to ensure that job name begins with \"CPM_\"\n";
+	print $ofh "  cpm.jobname.row<-grep(\"JOB_NAME\",mat.settings2)  \n";
+	print $ofh "  cpm.jobname.line<-(settings[cpm.jobname.row,3])\n";
+	print $ofh "  cpm.job.name<-rbind(cpm.job.name,as.data.frame(cpm.jobname.line))\n";
+	print $ofh "  cpm.job.name<-droplevels(cpm.job.name)\n";
+	print $ofh "}\n";
+	print $ofh "\n";
+	print $ofh "cat(\"\\nSUMMARY\\n\\n\")\n";
+	print $ofh "vintage.table<-table(vintage)\n";
+	print $ofh "prop.table(vintage.table)*100\n";
+	print $ofh "cat(\"\\n\")\n";
+	print $ofh "\n";
+	print $ofh "upper.table<-table(upper)\n";
+	print $ofh "prop.table(upper.table)*100\n";
+	print $ofh "cat(\"\\n\")\n";
+	print $ofh "\n";
+	print $ofh "lower.table<-table(lower)\n";
+	print $ofh "prop.table(lower.table)*100\n";
+	print $ofh "cat(\"\\n\")\n";
+	print $ofh "\n";
+	print $ofh "queue.table<-table(queue)\n";
+	print $ofh "prop.table(queue.table)*100\n";
+	print $ofh "cat(\"\\n\")\n";
+	print $ofh "\n";
+	print $ofh "#Prints first 4 characters of job name (all should start with \"CPM_\")\n";
+	print $ofh "cpm.jobname.trunc<-strtrim(cpm.job.name\$cpm.jobname.line,4)\n";
+	print $ofh "jobname.table<-table(cpm.jobname.trunc)\n";
+	print $ofh "prop.table(jobname.table)*100\n";
+	print $ofh "cat(\"\\n\")\n";
+	print $ofh "\n";
+	print $ofh "cat(\"Total number of INA folders:\", length(ina.config.matches))\n";
+	print $ofh "\n";
+	print $ofh "sink()\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
