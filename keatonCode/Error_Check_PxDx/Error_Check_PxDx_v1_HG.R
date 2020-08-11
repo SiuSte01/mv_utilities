@@ -2,7 +2,7 @@
 #setwd("T:/HealthGrades/2019_09_30_Refresh/2019_09_30_Client_Files/outDir/ncileGroups")
 
 #Find all config directories within your folder for PxDx jobs only (ignore INA jobs)
-matches.pxdx.files<-list.files(path=Sys.glob("group*/therapyLines/*/config"),pattern="jobVendorSettings.tab",recursive=F,full.names=T) 
+matches.pxdx.files<-list.files(path=Sys.glob("group*/therapyLines/*/config"),pattern="jobVendorSettings.tab",recursive=F,full.names=T)
 matches.pxdx<-dirname(matches.pxdx.files)
 
 #Run error check script for each PxDx job
@@ -15,7 +15,7 @@ for (i in 1:length(matches.pxdx)){
 }
 
 #Print combined log for all jobs
-matches.error.files<-list.files(path=Sys.glob("group*/therapyLines/*/config"),pattern="error_check.tab",recursive=F,full.names=T) 
+matches.error.files<-list.files(path=Sys.glob("group*/therapyLines/*/config"),pattern="error_check.tab",recursive=F,full.names=T)
 matches.error<-dirname(matches.error.files)
 
 sink("error_check_combined.txt")
