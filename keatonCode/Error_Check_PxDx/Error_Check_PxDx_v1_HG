@@ -54,8 +54,8 @@ GetOptions(
 );
 
 my $rScript = generateRScript();
-#system("R CMD BATCH --vanilla " . $rScript);
-#system("rm " . $rScript);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
 
 #system("chmod 777 -R --silent .");
 
