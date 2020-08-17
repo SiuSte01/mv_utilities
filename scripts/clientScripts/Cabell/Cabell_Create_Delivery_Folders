@@ -35,7 +35,7 @@ BEGIN
 	if($lib =~ m/mv_utilities/)
 	{
 		$lib =~ s/mv_utilities.*/mv_utilities/;
-		$rScript = Cwd::abs_path($lib) . "/keatonCode/Cabell/Create_Delivery_Folders.R";
+		$rScript = Cwd::abs_path($lib) . "/scripts/clientScripts/Cabell/Create_Delivery_Folders.R";
 	}
 	else
 	{
@@ -45,7 +45,7 @@ BEGIN
 		my $sitePath = `python -m site | grep $lib | grep site-packages`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
-		$rScript = $sitePath . "/keatonCode/Cabell/Create_Delivery_Folders.R";
+		$rScript = $sitePath . "/scripts/clientScripts/Cabell/Create_Delivery_Folders.R";
 	}
 }
 
