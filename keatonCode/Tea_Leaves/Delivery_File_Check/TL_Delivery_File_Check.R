@@ -4,8 +4,8 @@
 #new_dir_path <- ("T:/Tea_Leaves/2018_09_28_Tea_Leaves_Emdeon_Delivery/7z_Files")
 
 #To use standard file paths based on date
-old_dir_path<-paste0("T:/Tea_Leaves/",old_dir_date,"_Tea_Leaves_Emdeon_Delivery/7z_Files")
-new_dir_path<-paste0("T:/Tea_Leaves/",new_dir_date,"_Tea_Leaves_Emdeon_Delivery/7z_Files")
+old_dir_path<-paste0("/vol/cs/clientprojects/Tea_Leaves/",old_dir_date,"_Tea_Leaves_Emdeon_Delivery/7z_Files")
+new_dir_path<-paste0("/vol/cs/clientprojects/Tea_Leaves/",new_dir_date,"_Tea_Leaves_Emdeon_Delivery/7z_Files")
 
 #Find zip files in folders (.zip or .7z)
 old_zip_names <- list.files(old_dir_path,pattern="z")
@@ -83,7 +83,7 @@ csv_names_no_date<-sub("201X_MONTH_",replacement="",csv_names_no_na,fixed=F)
 csv_names_no_date2<-sub("201X_XX_XX",replacement="",csv_names_no_date,fixed=F)
 
 
-monthly_folder_path<-paste0("T:/Tea_Leaves/",new_dir_date,"_PxDx_and_INA")
+monthly_folder_path<-paste0("/vol/cs/clientprojects/Tea_Leaves/",new_dir_date,"_PxDx_and_INA")
 setwd(monthly_folder_path)
 
 ###Addition/change: Print summary of comparison results
