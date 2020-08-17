@@ -9,6 +9,7 @@ setup(name='mvUtil',
       author_email='stephen.siu@lexisnexis.com',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
+			'gdixonCode/Tea_Leaves': ['*.R'],
 			'keatonCode/Cabell': ['*'],
 				'keatonCode/Cabell/Testing': ['*'],
 				'keatonCode/CPM': ['*.R','*.msg'],
@@ -25,6 +26,7 @@ setup(name='mvUtil',
 			'rhopsonCode/utilities': ['*'],
 		},
       packages=[
+			'gdixonCode/Tea_Leaves',
 			'keatonCode/Cabell',
 				'keatonCode/Cabell/Testing',
 				'keatonCode/CPM',
@@ -41,6 +43,7 @@ setup(name='mvUtil',
 			'rhopsonCode/utilities'
 			],
       scripts=[
+			'gdixonCode/Tea_Leaves/Copy_Checking_Delivery_Files',
 			'keatonCode/Cabell/Cabell_Create_Delivery_Folders',
 				'keatonCode/CPM/INA_Setting_Comparison_CPM',
 				'keatonCode/Error_Check_PxDx/Error_Check_PxDx_v1',
