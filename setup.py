@@ -23,7 +23,7 @@ setup(name='mvUtil',
 			'rhopsonCode/utilities': ['*'],
 			'scripts/clientScripts/Cabell': ['*'],
 				'scripts/clientScripts/Cabell/Testing': ['*'],
-			'scripts/clientScripts/CPM': ['*.R','*.msg'],
+			'scripts/clientScripts/CPM': ['*.R','*.msg']
 		},
       packages=[
 			'gdixonCode/Tea_Leaves',
@@ -63,6 +63,6 @@ setup(name='mvUtil',
 				'projCode/src/Trending/standard_trend',
 				'projCode/src/Trending/standard_trend_co',
 			'scripts/clientScripts/Cabell/Cabell_Create_Delivery_Folders'
-			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM',
+			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM'
 			],
       zip_safe=False)
