@@ -10,7 +10,6 @@ setup(name='mvUtil',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
 			'gdixonCode/Tea_Leaves': ['*.R'],
-				'keatonCode/CPM': ['*.R','*.msg'],
 				'keatonCode/Error_Check_PxDx': ['*.R'],
 				'keatonCode/New_Script_KE': ['*.R'],
 					'keatonCode/New_Script_KE/Unprojected': ['*.R'],
@@ -24,6 +23,7 @@ setup(name='mvUtil',
 			'rhopsonCode/utilities': ['*'],
 			'scripts/clientScripts/Cabell': ['*'],
 				'scripts/clientScripts/Cabell/Testing': ['*'],
+			'scripts/clientScripts/CPM': ['*.R','*.msg'],
 		},
       packages=[
 			'gdixonCode/Tea_Leaves',
@@ -40,11 +40,11 @@ setup(name='mvUtil',
 				'projCode/src/Trending',
 			'rhopsonCode/utilities',
 			'scripts/clientScripts/Cabell',
-				'scripts/clientScripts/Cabell/Testing'
+				'scripts/clientScripts/Cabell/Testing',
+			'scripts/clientScripts/CPM'
 			],
       scripts=[
 			'gdixonCode/Tea_Leaves/Copy_Checking_Delivery_Files',
-				'keatonCode/CPM/INA_Setting_Comparison_CPM',
 				'keatonCode/Error_Check_PxDx/Error_Check_PxDx_v1',
 				'keatonCode/Error_Check_PxDx/Error_Check_PxDx_v1_HG',
 				'keatonCode/New_Script_KE/QA_full_tab_new_KE_v3',
@@ -63,5 +63,6 @@ setup(name='mvUtil',
 				'projCode/src/Trending/standard_trend',
 				'projCode/src/Trending/standard_trend_co',
 			'scripts/clientScripts/Cabell/Cabell_Create_Delivery_Folders'
+			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM',
 			],
       zip_safe=False)
