@@ -99,7 +99,7 @@ foreach my $x (keys %{$memoryHash->{"BRANCHES"}})
 	{
 		if(-e $file)
 		{
-			system("git rm " . $file);
+			system("git rm -r " . $file);
 			system("git commit -m \"" . $rmMsg . "\"");
 			system("git push");
 		}
