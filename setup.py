@@ -61,7 +61,7 @@ setup(name='mvUtil',
 				'projCode/src/run_ABCPM.pl',
 				'projCode/src/Trending/standard_trend',
 				'projCode/src/Trending/standard_trend_co',
-			'scripts/clientScripts/Cabell/Cabell_Create_Delivery_Folders'
+			'scripts/clientScripts/Cabell/Cabell_Create_Delivery_Folders',
 			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM'
 			],
       zip_safe=False)
