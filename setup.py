@@ -27,7 +27,6 @@ setup(name='mvUtil',
 		},
       packages=[
 			'gdixonCode/Tea_Leaves',
-				'keatonCode/CPM',
 				'keatonCode/Error_Check_PxDx',
 				'keatonCode/New_Script_KE',
 					'keatonCode/New_Script_KE/Unprojected',
