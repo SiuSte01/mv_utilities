@@ -68,7 +68,7 @@ print(milestone_paths2)
 
 #Use mapping file. WRAP THIS ALL IN A LOOP.
 
-mapping_file<-read.table("/vol/cs/clientprojects/mv_utilities/keatonCode/Cabell/Testing/mapping.txt",header=T,sep="\t")
+mapping_file<-read.table("/vol/cs/clientprojects/mv_utilities/scripts/clientScripts/Cabell/Testing/mapping.txt",header=T,sep="\t")
   
 #Find line with mapping file value
 i<-1
