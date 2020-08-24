@@ -10,7 +10,7 @@ setup(name='mvUtil',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
 			'gdixonCode/Tea_Leaves': ['*.R'],
-				'keatonCode/Error_Check_PxDx': ['*.R'],
+				
 				'keatonCode/New_Script_KE': ['*.R'],
 					'keatonCode/New_Script_KE/Unprojected': ['*.R'],
 					'keatonCode/New_Script_KE/USPI': ['*.R'],
@@ -20,14 +20,14 @@ setup(name='mvUtil',
 				'projCode/src/AdvisoryBoard': ['*'],
 				'projCode/src/INA': ['*'],
 				'projCode/src/Trending': ['*'],
-			'rhopsonCode/utilities': ['*'],
 			'scripts/clientScripts/Cabell': ['*'],
 				'scripts/clientScripts/Cabell/Testing': ['*'],
-			'scripts/clientScripts/CPM': ['*.R','*.msg']
+			'scripts/clientScripts/CPM': ['*.R','*.msg'],
+			'scripts/scripts': ['*'],
+				'scripts/scripts/Error_Check_PxDx': ['*.R']
 		},
       packages=[
 			'gdixonCode/Tea_Leaves',
-				'keatonCode/Error_Check_PxDx',
 				'keatonCode/New_Script_KE',
 					'keatonCode/New_Script_KE/Unprojected',
 					'keatonCode/New_Script_KE/USPI',
@@ -37,15 +37,14 @@ setup(name='mvUtil',
 				'projCode/src/AdvisoryBoard',
 				'projCode/src/INA',
 				'projCode/src/Trending',
-			'rhopsonCode/utilities',
 			'scripts/clientScripts/Cabell',
 				'scripts/clientScripts/Cabell/Testing',
-			'scripts/clientScripts/CPM'
+			'scripts/clientScripts/CPM',
+			'scripts/scripts',
+				'scripts/scripts/Error_Check_PxDx'
 			],
       scripts=[
 			'gdixonCode/Tea_Leaves/Copy_Checking_Delivery_Files',
-				'keatonCode/Error_Check_PxDx/Error_Check_PxDx_v1',
-				'keatonCode/Error_Check_PxDx/Error_Check_PxDx_v1_HG',
 				'keatonCode/New_Script_KE/QA_full_tab_new_KE_v3',
 					'keatonCode/New_Script_KE/Unprojected/QA_KE_unprojected',
 					'keatonCode/New_Script_KE/USPI/QA_full_tab_new_KE_USPI_Single_Bucket',
@@ -62,6 +61,9 @@ setup(name='mvUtil',
 				'projCode/src/Trending/standard_trend',
 				'projCode/src/Trending/standard_trend_co',
 			'scripts/clientScripts/Cabell/Cabell_Create_Delivery_Folders',
-			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM'
+			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM',
+			'scripts/scripts/qc_projections_v3.sh',
+				'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1',
+					'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1_HG'
 			],
       zip_safe=False)
