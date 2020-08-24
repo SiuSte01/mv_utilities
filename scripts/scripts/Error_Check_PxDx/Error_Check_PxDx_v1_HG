@@ -21,7 +21,7 @@ BEGIN
 		$lib =~ s/mv_utilities.*/perl_utilities/;
 		$mvDir =~ s/mv_utilities.*/mv_utilities/;
 		$libDir = Cwd::abs_path($lib) . "/lib";
-		$qcProjScript = $mvDir . "/rhopsonCode/utilities/qc_projections_v3.sh";
+		$qcProjScript = $mvDir . "/scripts/scripts/qc_projections_v3.sh";
 	}
 	else
 	{
@@ -32,7 +32,7 @@ BEGIN
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
-		$qcProjScript = $sitePath . "/rhopsonCode/utilities/qc_projections_v3.sh";
+		$qcProjScript = $sitePath . "/scripts/scripts/qc_projections_v3.sh";
 	}
 	$envName = `conda info -e | grep '*'`;
 	$envName =~ s/\*.*//;
