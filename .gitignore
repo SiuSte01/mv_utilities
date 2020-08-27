@@ -4,9 +4,6 @@ Dev
 diffInvest
 Documentation
 InputDataFiles*
-keatonCode/New_Script_KE/[NTb]*
-keatonCode/New_Script_KE/*.docx
-keatonCode/New_Script_KE/*.lnk
 keatonCode/Tea_Leaves/Instructions
 keatonCode/Tea_Leaves/Delivery_File_Check/comparison_summary.txt
 keatonCode/Tea_Leaves/Delivery_File_Check/TL_Delivery_File_Check_*
@@ -14,6 +11,9 @@ rhopsonCode/[.2CDFGHINPRTUVabcdfghilnpqrstvwx]*
 rhopsonCode/un*
 rhopsonCode/utilities/[CEFHMTUVabcfgimprstuvwz]*
 rhopsonCode/utilities/qc_projections_archive
+scripts/scripts/QA_full_tab_PxDx/[NTb]*
+scripts/scripts/QA_full_tab_PxDx/*.docx
+scripts/scripts/QA_full_tab_PxDx/*.lnk
 TL
 unprojected_raw_claims
 *Archive*
