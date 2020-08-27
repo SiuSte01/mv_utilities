@@ -10,10 +10,6 @@ setup(name='mvUtil',
 		package_data={
 			'': ['*.tab','*.txt','*.cfg','*.pm','*.sas','*.xlsm'],
 			'gdixonCode/Tea_Leaves': ['*.R'],
-				
-				'keatonCode/New_Script_KE': ['*.R'],
-					'keatonCode/New_Script_KE/Unprojected': ['*.R'],
-					'keatonCode/New_Script_KE/USPI': ['*.R'],
 				'keatonCode/Tea_Leaves': ['*.R'],
 					'keatonCode/Tea_Leaves/Delivery_File_Check': ['*.R'],
 			'projCode/src': ['dopatients.pl','multiBucket_ABCPM.pl','project_PAC.pl','sendemail.pl','*.sas'],
@@ -24,13 +20,13 @@ setup(name='mvUtil',
 				'scripts/clientScripts/Cabell/Testing': ['*'],
 			'scripts/clientScripts/CPM': ['*.R','*.msg'],
 			'scripts/scripts': ['*'],
-				'scripts/scripts/Error_Check_PxDx': ['*.R']
+				'scripts/scripts/Error_Check_PxDx': ['*.R'],
+				'scripts/scripts/QA_full_tab_PxDx': ['*.R'],
+					'scripts/scripts/QA_full_tab_PxDx/Unprojected': ['*.R'],
+					'scripts/scripts/QA_full_tab_PxDx/USPI': ['*.R']
 		},
       packages=[
 			'gdixonCode/Tea_Leaves',
-				'keatonCode/New_Script_KE',
-					'keatonCode/New_Script_KE/Unprojected',
-					'keatonCode/New_Script_KE/USPI',
 				'keatonCode/Tea_Leaves',
 					'keatonCode/Tea_Leaves/Delivery_File_Check',
 			'projCode/src',
@@ -41,13 +37,13 @@ setup(name='mvUtil',
 				'scripts/clientScripts/Cabell/Testing',
 			'scripts/clientScripts/CPM',
 			'scripts/scripts',
-				'scripts/scripts/Error_Check_PxDx'
+				'scripts/scripts/Error_Check_PxDx',
+				'scripts/scripts/QA_full_tab_PxDx',
+					'scripts/scripts/QA_full_tab_PxDx/Unprojected',
+					'scripts/scripts/QA_full_tab_PxDx/USPI'
 			],
       scripts=[
 			'gdixonCode/Tea_Leaves/Copy_Checking_Delivery_Files',
-				'keatonCode/New_Script_KE/QA_full_tab_new_KE_v3',
-					'keatonCode/New_Script_KE/Unprojected/QA_KE_unprojected',
-					'keatonCode/New_Script_KE/USPI/QA_full_tab_new_KE_USPI_Single_Bucket',
 				'keatonCode/Tea_Leaves/codeGroupMembers_Check',
 					'keatonCode/Tea_Leaves/INA_Setting_Comparison',
 			'projCode/src/AdvisoryBoard/combine_inadirs.pl',
@@ -64,6 +60,9 @@ setup(name='mvUtil',
 			'scripts/clientScripts/CPM/INA_Setting_Comparison_CPM',
 			'scripts/scripts/qc_projections_v3.sh',
 				'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1',
-					'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1_HG'
+					'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1_HG',
+				'scripts/scripts/QA_full_tab_PxDx/QA_full_tab_new_KE_v3',
+					'scripts/scripts/QA_full_tab_PxDx/Unprojected/QA_KE_unprojected',
+					'scripts/scripts/QA_full_tab_PxDx/USPI/QA_full_tab_new_KE_USPI_Single_Bucket'
 			],
       zip_safe=False)
