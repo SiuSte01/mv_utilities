@@ -1,0 +1,173 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $year;
+my $debug;
+
+GetOptions(
+	"year=s"	=>\$year,
+	"debug"	=>\$debug
+);
+
+die "year=> parameter is required\n" unless $year;
+$year = normalizeDate(date=>$year,underscore=>"Y");
+my $rScript = generateRScript(year=>$year);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $year = $args{year} || die "year=> parameter is required\n";
+	my $returnFile = "Activity_Report_PostProcessing_Loop_TL.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "#Set working directory\n";
+	print $ofh "setwd(\"/vol/cs/clientprojects/Tea_Leaves/" . $year . "_PxDx_and_INA/\")\n";
+	print $ofh "#Listing the Dx and Px Activity Reports\n";
+	print $ofh "AR_dx_dirs <- c(\"ActivityReport_DxIPOnly_Emdeon\",\"ActivityReport_DxOPOfficeASC_Emdeon\")\n";
+	print $ofh "AR_px_dirs <- c(\"ActivityReport_PxIPOnly_Emdeon\",\"ActivityReport_PxOPOfficeASC_Emdeon\")\n";
+	print $ofh "\n";
+	print $ofh "folders <- c(AR_px_dirs, AR_dx_dirs)\n";
+	print $ofh "\n";
+	print $ofh "#Loop for reading and transforming Dx Activity Reports\n";
+	print $ofh "for (dirs in AR_dx_dirs)\n";
+	print $ofh "{ setwd(dirs)\n";
+	print $ofh "  AR_dx<- paste(\".\", \"activity_breakout.txt\",sep=\"/\")\n";
+	print $ofh "  act_report<-read.delim(AR_dx, header=T,sep=\"\\t\", quote=\"\",comment.char=\"\",colClasses=c(\"HMS_PIID\"=\"character\",\"DiagNoDecimal\"=\"character\", \"Diag\"=\"character\",\"CodeType\"=\"character\",\"Count\"=\"character\",\"PctofClaims\"=\"character\",\"Description\"=\"character\"))\n";
+	print $ofh "  act_report_no_desc<-act_report[,c(1:4,6)]\n";
+	print $ofh "  code_desc_with_dupes<-act_report[,c(2,4,7)]\n";
+	print $ofh "  \n";
+	print $ofh "  unique_desc<-unique(code_desc_with_dupes)\n";
+	print $ofh "  \n";
+	print $ofh "  write.table(unique_desc,\"code_description.txt\",sep=\"\\t\",quote=FALSE,row.names=FALSE,na=\"\")\n";
+	print $ofh "  write.table(act_report_no_desc,\"activityreport_nodesc.txt\", sep=\"\\t\",quote=FALSE,row.names=FALSE,na=\"\")\n";
+	print $ofh "  \n";
+	print $ofh "  file.copy(\"code_description.txt\", \".\")\n";
+	print $ofh "  file.copy(\"activityreport_nodesc.txt\", \".\") \n";
+	print $ofh "  setwd(\"..\")\n";
+	print $ofh "  rm(unique_desc)\n";
+	print $ofh "  rm(act_report_no_desc)\n";
+	print $ofh "  rm(act_report)\n";
+	print $ofh "  rm(code_desc_with_dupes)\n";
+	print $ofh "  gc()\n";
+	print $ofh "}\n";
+	print $ofh "\n";
+	print $ofh "#########################################################################################################################\n";
+	print $ofh "\n";
+	print $ofh "#Loop for reading and transforming Px Activity Reports\n";
+	print $ofh "for (dirs in AR_px_dirs)\n";
+	print $ofh "{ setwd(dirs)\n";
+	print $ofh "  AR_px<- paste(\".\", \"activity_breakout.txt\",sep=\"/\")\n";
+	print $ofh "  act_report<-read.delim(AR_px, header=T,sep=\"\\t\", quote=\"\",comment.char=\"\",colClasses=c(\"HMS_PIID\"=\"character\",\"ProcNoDecimal\"=\"character\", \"Proc\"=\"character\",\"CodeType\"=\"character\",\"Count\"=\"character\",\"PctofClaims\"=\"character\",\"Description\"=\"character\"))\n";
+	print $ofh "  act_report_no_desc<-act_report[,c(1:4,6)]\n";
+	print $ofh "  code_desc_with_dupes<-act_report[,c(2,4,7)]\n";
+	print $ofh "  \n";
+	print $ofh "  unique_desc<-unique(code_desc_with_dupes)\n";
+	print $ofh "  \n";
+	print $ofh "  write.table(unique_desc,\"code_description.txt\",sep=\"\\t\",quote=FALSE,row.names=FALSE,na=\"\")\n";
+	print $ofh "  write.table(act_report_no_desc,\"activityreport_nodesc.txt\", sep=\"\\t\",quote=FALSE,row.names=FALSE,na=\"\")\n";
+	print $ofh "  \n";
+	print $ofh "  file.copy(\"code_description.txt\", \".\")\n";
+	print $ofh "  file.copy(\"activityreport_nodesc.txt\", \".\") \n";
+	print $ofh "  setwd(\"..\")\n";
+	print $ofh "  rm(act_report)\n";
+	print $ofh "  rm(act_report_no_desc)\n";
+	print $ofh "  rm(code_desc_with_dups)\n";
+	print $ofh "  rm(unique_desc)\n";
+	print $ofh "  gc()\n";
+	print $ofh "}\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
