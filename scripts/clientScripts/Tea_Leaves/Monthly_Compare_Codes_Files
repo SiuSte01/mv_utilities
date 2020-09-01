@@ -47,17 +47,17 @@ if(-e "debug")
 
 my $timeBegin = time();
 
-my $oldYear;
+my $oldDate;
 my $debug;
 
 GetOptions(
-	"oldYear=s"  =>\$oldYear,
+	"oldDate=s"  =>\$oldDate,
 	"debug"     =>\$debug
 );
 
-die "oldYear=> parameter is required\n" unless $oldYear;
-$oldYear = normalizeDate(date=>$oldYear,underscore=>"Y");
-my $rScript = generateRScript(oldYear=>$oldYear);
+die "oldDate=> parameter is required\n" unless $oldDate;
+$oldDate = normalizeDate(date=>$oldDate,underscore=>"Y");
+my $rScript = generateRScript(oldDate=>$oldDate);
 system("R CMD BATCH --vanilla " . $rScript);
 system("rm " . $rScript);
 
@@ -75,7 +75,7 @@ my $minutes = $runTime/60;
 sub generateRScript
 {
 	my %args = @_;
-	my $oldYear = $args{oldYear} || die "oldYear=> parameter is required\n";
+	my $oldDate = $args{oldDate} || die "oldDate=> parameter is required\n";
 	my $returnFile = "Monthly_Compare_Codes_Files.R";
 	open my $ofh, ">", $returnFile;
 	print $ofh "# Run from new main project PxDx folder\n";
@@ -83,7 +83,7 @@ sub generateRScript
 	print $ofh "# R CMD BATCH --vanilla /vol/datadev/Statistics/Katie/Tea_Leaves/Monthly_Compare_Codes_Files.R\n";
 	print $ofh "# Compares the codes files with a bucket vs previous month (Projections must be complete)\n";
 	print $ofh "\n";
-	print $ofh "old_dir<-\"/vol/cs/clientprojects/Tea_Leaves/" . $oldYear . "_PxDx_and_INA/" . $oldYear ."_PxDx_Emdeon\"\n";
+	print $ofh "old_dir<-\"/vol/cs/clientprojects/Tea_Leaves/" . $oldDate . "_PxDx_and_INA/" . $oldDate ."_PxDx_Emdeon\"\n";
 	print $ofh "new_dir<-getwd()\n";
 	print $ofh "\n";
 	print $ofh "#Find paths for every codes/codes.tab file\n";
