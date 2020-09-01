@@ -1,0 +1,190 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $oldYear;
+my $debug;
+
+GetOptions(
+	"oldYear=s"  =>\$oldYear,
+	"debug"     =>\$debug
+);
+
+die "oldYear=> parameter is required\n" unless $oldYear;
+$oldYear = normalizeDate(date=>$oldYear,underscore=>"Y");
+my $rScript = generateRScript(oldYear=>$oldYear);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $oldYear = $args{oldYear} || die "oldYear=> parameter is required\n";
+	my $returnFile = "Monthly_Compare_Codes_Files.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "# Run from new main project PxDx folder\n";
+	print $ofh "# Manually change old_dir path\n";
+	print $ofh "# R CMD BATCH --vanilla /vol/datadev/Statistics/Katie/Tea_Leaves/Monthly_Compare_Codes_Files.R\n";
+	print $ofh "# Compares the codes files with a bucket vs previous month (Projections must be complete)\n";
+	print $ofh "\n";
+	print $ofh "old_dir<-\"/vol/cs/clientprojects/Tea_Leaves/" . $oldYear . "_PxDx_and_INA/" . $oldYear ."_PxDx_Emdeon\"\n";
+	print $ofh "new_dir<-getwd()\n";
+	print $ofh "\n";
+	print $ofh "#Find paths for every codes/codes.tab file\n";
+	print $ofh "old_codes<-list.files(path=Sys.glob(paste0(old_dir,\"/*/*/codes\")),pattern=\"codes.tab\",recursive=F,full.names=T) \n";
+	print $ofh "new_codes<-list.files(path=Sys.glob(paste0(new_dir,\"/*/*/codes\")),pattern=\"codes.tab\",recursive=F,full.names=T) \n";
+	print $ofh "\n";
+	print $ofh "#Replace dates in file paths so you can compare bucket names\n";
+	print $ofh "old_codes_gsub<-gsub(\"20.*PxDx_Emdeon\",\"20YY_MM_DD_PxDx_and_INA/20YY_MM_DD_PxDx_Emdeon\",old_codes)\n";
+	print $ofh "new_codes_gsub<-gsub(\"20.*PxDx_Emdeon\",\"20YY_MM_DD_PxDx_and_INA/20YY_MM_DD_PxDx_Emdeon\",new_codes)\n";
+	print $ofh "\n";
+	print $ofh "print(new_dir)\n";
+	print $ofh "print(old_dir)\n";
+	print $ofh "\n";
+	print $ofh "sink(\"code_file_comparisons.txt\")\n";
+	print $ofh "\n";
+	print $ofh "#Which buckets were added or removed?\n";
+	print $ofh "\n";
+	print $ofh "if(identical(old_codes_gsub,new_codes_gsub)==\"FALSE\"){\n";
+	print $ofh "cat(\"The following buckets will not be checked:\\n\")\n";
+	print $ofh "cat(\"\\nIn old, not in new\\n\")\n";
+	print $ofh "print(gsub(\"/vol/cs/clientprojects/Tea_Leaves/20YY_MM_DD_PxDx_and_INA/20YY_MM_DD_PxDx_Emdeon/\",\"\",setdiff(old_codes_gsub,new_codes_gsub)))\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "cat(\"\\nIn new, not in old\\n\")\n";
+	print $ofh "print(gsub(\"/vol/cs/clientprojects/Tea_Leaves/20YY_MM_DD_PxDx_and_INA/20YY_MM_DD_PxDx_Emdeon/\",\"\",setdiff(new_codes_gsub,old_codes_gsub)))\n";
+	print $ofh "}\n";
+	print $ofh "\n";
+	print $ofh "#Keep buckets in both old and new dirs\n";
+	print $ofh "buckets_both<-intersect(old_codes_gsub,new_codes_gsub)\n";
+	print $ofh "\n";
+	print $ofh "#Split out path names to get bucket and sub-bucket names\n";
+	print $ofh "buckets_both_split<-strsplit(buckets_both,split=\"/\")\n";
+	print $ofh "buckets_both_mat<-matrix(unlist(buckets_both_split), ncol=11, byrow=TRUE)\n";
+	print $ofh "buckets_both_df<-as.data.frame(buckets_both_mat)\n";
+	print $ofh "\n";
+	print $ofh "#Grab bucket and sub-bucket name for buckets in both old and new dirs\n";
+	print $ofh "buckets_both_df\$bucket_sub<-paste(buckets_both_df\$V8,buckets_both_df\$V9,sep=\"/\")\n";
+	print $ofh "\n";
+	print $ofh "buckets_both_final<-buckets_both_df\$bucket_sub\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "#Search for bucket name in each dir and compare\n";
+	print $ofh "for (i in 1:length(buckets_both_final)){\n";
+	print $ofh "  bucket_to_find<-buckets_both_final[i]\n";
+	print $ofh "  old_codes_dir<-old_codes[grep(bucket_to_find,old_codes)]\n";
+	print $ofh "  old_code_list<-read.table(old_codes_dir, header=F, sep=\"\\t\", quote=\"\", comment.char=\"\", as.is=T, na.strings=\"\")\n";
+	print $ofh "  \n";
+	print $ofh "  new_codes_dir<-new_codes[grep(bucket_to_find,new_codes)]\n";
+	print $ofh "  new_code_list<-read.table(new_codes_dir, header=F, sep=\"\\t\", quote=\"\", comment.char=\"\", as.is=T, na.strings=\"\")\n";
+	print $ofh "  \n";
+	print $ofh "  #Print differences\n";
+	print $ofh "\n";
+	print $ofh "  if(identical(old_code_list,new_code_list)==\"FALSE\"){\n";
+	print $ofh "    cat(\"\\nCodes changes detected:\\n\")\n";
+	print $ofh "    print(bucket_to_find,quote=F)\n";
+	print $ofh "    cat(\"\\nDeleted codes:\\n\")\n";
+	print $ofh "    print(setdiff(old_code_list\$V1,new_code_list\$V1),quote=F)\n";
+	print $ofh "    cat(\"\\nAdded codes:\\n\")\n";
+	print $ofh "    print(setdiff(new_code_list\$V1,old_code_list\$V1),quote=F)\n";
+	print $ofh "    cat(\"\\n\\n\")\n";
+	print $ofh "  }\n";
+	print $ofh "    \n";
+	print $ofh "}\n";
+	print $ofh "\n";
+	print $ofh "sink()\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
