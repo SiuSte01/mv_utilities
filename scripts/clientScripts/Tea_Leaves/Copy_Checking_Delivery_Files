@@ -50,21 +50,21 @@ if(-e "debug")
 
 my $timeBegin = time();
 
-my $oldDir;
-my $newDir;
+my $oldDate;
+my $newDate;
 my $debug;
 
 GetOptions(
-	"oldDir=s"  =>\$oldDir,
-	"newDir=s"	=>\$newDir,
+	"oldDate=s"  =>\$oldDate,
+	"newDate=s"	=>\$newDate,
 	"debug"     =>\$debug
 );
 
-die "oldDir=> parameter is required\n" unless $oldDir;
-die "newDir=> parameter is required\n" unless $newDir;
-$oldDir = normalizeDate(date=>$oldDir,underscore=>"Y");
-$newDir = normalizeDate(date=>$newDir,underscore=>"Y");
-my $rScript = generateRScript(oldDir=>$oldDir,newDir=>$newDir);
+die "oldDate=> parameter is required\n" unless $oldDate;
+die "newDate=> parameter is required\n" unless $newDate;
+$oldDate = normalizeDate(date=>$oldDate,underscore=>"Y");
+$newDate = normalizeDate(date=>$newDate,underscore=>"Y");
+my $rScript = generateRScript(oldDate=>$oldDate,newDate=>$newDate);
 system("R CMD BATCH --vanilla " . $rScript);
 system("rm " . $rScript);
 
@@ -82,13 +82,13 @@ my $minutes = $runTime/60;
 sub generateRScript
 {
 	my %args = @_;
-	my $oldDir = $args{oldDir} || die "oldDir=> parameter is required\n";
-	my $newDir = $args{newDir} || die "newDir=> parameter is required\n";
+	my $oldDate = $args{oldDate} || die "oldDate=> parameter is required\n";
+	my $newDate = $args{newDate} || die "newDate=> parameter is required\n";
 	my $returnFile = "Copy_Checking_Delivery_Files.R";
 	open my $ofh, ">", $returnFile;
 	print $ofh "#Directory dates\n";
-	print $ofh "old_dir_date <- '" . $oldDir . "'\n";
-	print $ofh "new_dir_date <- '" . $newDir . "'\n";
+	print $ofh "old_dir_date <- '" . $oldDate. "'\n";
+	print $ofh "new_dir_date <- '" . $newDate . "'\n";
 	print $ofh "\n";
 	print $ofh "setwd('/vol/cs/clientprojects/Tea_Leaves/')\n";
 	print $ofh "\n";
