@@ -35,7 +35,7 @@ BEGIN
 	if($lib =~ m/mv_utilities/)
 	{
 		$lib =~ s/mv_utilities.*/mv_utilities/;
-		$rScript = Cwd::abs_path($lib) . "/keatonCode/Tea_Leaves/INA_Setting_Comparison.R";
+		$rScript = Cwd::abs_path($lib) . "/scripts/clientScripts/Tea_Leaves/INA_Setting_Comparison.R";
 	}
 	else
 	{
@@ -45,7 +45,7 @@ BEGIN
 		my $sitePath = `python -m site | grep $lib | grep site-packages`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
-		$rScript = $sitePath . "/keatonCode/Tea_Leaves/INA_Setting_Comparison.R";
+		$rScript = $sitePath . "/scripts/clientScripts/Tea_Leaves/INA_Setting_Comparison.R";
 	}
 }
 
