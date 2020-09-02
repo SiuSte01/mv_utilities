@@ -1,0 +1,7 @@
+Parameter	Value
+IndivsFile	REPLACE_INDIVS
+PxDxFile	
+RankColumn	
+ZipsFile	
+SpecialtiesFile	REPLACE_SPECIALTIES
+MinimumRankToKeep	1
