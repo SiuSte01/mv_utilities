@@ -23,7 +23,8 @@ setup(name='mvUtil',
 				'scripts/scripts/Error_Check_PxDx': ['*.R'],
 				'scripts/scripts/QA_full_tab_PxDx': ['*.R'],
 					'scripts/scripts/QA_full_tab_PxDx/Unprojected': ['*.R'],
-					'scripts/scripts/QA_full_tab_PxDx/USPI': ['*.R']
+					'scripts/scripts/QA_full_tab_PxDx/USPI': ['*.R'],
+				'scripts/scripts/scatterQC': ['*.R']
 		},
       packages=[
 			'projCode/src',
@@ -40,7 +41,8 @@ setup(name='mvUtil',
 				'scripts/scripts/Error_Check_PxDx',
 				'scripts/scripts/QA_full_tab_PxDx',
 					'scripts/scripts/QA_full_tab_PxDx/Unprojected',
-					'scripts/scripts/QA_full_tab_PxDx/USPI'
+					'scripts/scripts/QA_full_tab_PxDx/USPI',
+				'scripts/scripts/scatterQC'
 			],
       scripts=[
 			'projCode/src/AdvisoryBoard/combine_inadirs.pl',
@@ -68,6 +70,7 @@ setup(name='mvUtil',
 				'scripts/scripts/QA_full_tab_PxDx/QA_full_tab_new_KE_v3',
 					'scripts/scripts/QA_full_tab_PxDx/Unprojected/QA_KE_unprojected',
 					'scripts/scripts/QA_full_tab_PxDx/USPI/QA_full_tab_new_KE_USPI_Single_Bucket',
-					'scripts/scripts/qc_projections_v3.sh'
+					'scripts/scripts/qc_projections_v3.sh',
+				'scripts/scripts/scatterQC/ScatterQC_Loop_Summary'
 			],
       zip_safe=False)
