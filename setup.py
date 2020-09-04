@@ -67,6 +67,7 @@ setup(name='mvUtil',
 					'scripts/scripts/Error_Check_PxDx/Error_Check_PxDx_v1_HG',
 				'scripts/scripts/QA_full_tab_PxDx/QA_full_tab_new_KE_v3',
 					'scripts/scripts/QA_full_tab_PxDx/Unprojected/QA_KE_unprojected',
-					'scripts/scripts/QA_full_tab_PxDx/USPI/QA_full_tab_new_KE_USPI_Single_Bucket'
+					'scripts/scripts/QA_full_tab_PxDx/USPI/QA_full_tab_new_KE_USPI_Single_Bucket',
+					'scripts/scripts/qc_projections_v3.sh'
 			],
       zip_safe=False)
