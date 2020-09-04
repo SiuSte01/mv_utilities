@@ -15,6 +15,7 @@ rhopsonCode/un*
 rhopsonCode/utilities/[CEFHMTUVabcfgimprstuvwz]*
 rhopsonCode/utilities/qc_projections_archive
 scripts/clientScripts/Tea_Leaves/Instructions
+scripts/clientScripts/Tea_Leaves/Script_Instructions
 scripts/clientScripts/Tea_Leaves/Delivery_File_Check/TL_Delivery_File_Check_*
 scripts/scripts/QA_full_tab_PxDx/[NTb]*
 scripts/scripts/QA_full_tab_PxDx/*.docx
