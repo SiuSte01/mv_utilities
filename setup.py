@@ -71,6 +71,7 @@ setup(name='mvUtil',
 					'scripts/scripts/QA_full_tab_PxDx/Unprojected/QA_KE_unprojected',
 					'scripts/scripts/QA_full_tab_PxDx/USPI/QA_full_tab_new_KE_USPI_Single_Bucket',
 					'scripts/scripts/qc_projections_v3.sh',
-				'scripts/scripts/scatterQC/ScatterQC_Loop_Summary'
+				'scripts/scripts/scatterQC/ScatterQC_Loop_Summary',
+					'scripts/scripts/scatterQC/scatterQC_symlink'
 			],
       zip_safe=False)
