@@ -1,0 +1,217 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $scatterScript;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$scatterScript = $mvDir . "/scripts/scripts/OldvNew_Projections/setting_scatterQC.R";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$scatterScript = $sitePath . "/scripts/scripts/OldvNew_Projections/setting_scatterQC.R";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $debug;
+my $oldDir;
+my $newDir;
+
+GetOptions(
+	"debug"     =>\$debug,
+	"oldDir=s"	=>\$oldDir,
+	"newDir=s"	=>\$newDir
+);
+
+die "-oldDir parameter is required\n" unless $oldDir;
+die "-newDir parameter is required\n" unless $newDir;
+
+foreach my $x ($oldDir,$newDir)
+{
+	$x =~ s/\/+$//;
+	$x = Cwd::abs_path($x);
+}
+
+my $rScript = generateRScript(oldDir=>$oldDir,newDir=>$newDir);
+#system("R CMD BATCH --vanilla " . $rScript);
+#system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $oldDir = $args{oldDir} || die "oldDir=> parameter is required\n";
+	my $newDir = $args{newDir} || die "newDir=> parameter is required\n";
+	my $returnFile = "Setting_ScatterQC_Loop.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "olddir<-\"" . $oldDir . "\"\n";
+	print $ofh "newdir<-\"" . $newDir . "\"\n";
+	print $ofh "\n";
+	print $ofh "#Find all projections files\n";
+	print $ofh "setwd(olddir)\n";
+	print $ofh "old_proj_files<-list.files(olddir,\"projections.txt\",full.names = T,recursive=T)\n";
+	print $ofh "\n";
+	print $ofh "setwd(newdir)\n";
+	print $ofh "new_proj_files<-list.files(newdir,\"projections.txt\",full.names = T,recursive=T)\n";
+	print $ofh "\n";
+	print $ofh "#ASC projections compare\n";
+	print $ofh "old_asc<-grep(\"asc_projections.txt\",old_proj_files)\n";
+	print $ofh "new_asc<-grep(\"asc_projections.txt\",new_proj_files)\n";
+	print $ofh "\n";
+	print $ofh "#If both directories contain ASC projections\n";
+	print $ofh "if (length(old_asc)>0 & length(new_asc)>0){\n";
+	print $ofh "  asc_scatter_folder<-paste0(newdir,\"/Projections/ASC/Setting_Scatter\")\n";
+	print $ofh "  dir.create(asc_scatter_folder)\n";
+	print $ofh "  file.copy(from=old_proj_files[old_asc],to=paste0(asc_scatter_folder,\"/old_projections.txt\"))\n";
+	print $ofh "  file.copy(from=new_proj_files[new_asc],to=paste0(asc_scatter_folder,\"/new_projections.txt\"))\n";
+	print $ofh "  setwd(asc_scatter_folder)\n";
+	print $ofh "  sink(\"Summary_Rout.txt\")\n";
+	print $ofh "  source(\"" . $scatterScript . "\")\n";
+	print $ofh "  sink()\n";
+	print $ofh "  }\n";
+	print $ofh "\n";
+	print $ofh "#Office projections compare\n";
+	print $ofh "old_office<-grep(\"office_projections.txt\",old_proj_files)\n";
+	print $ofh "new_office<-grep(\"office_projections.txt\",new_proj_files)\n";
+	print $ofh "\n";
+	print $ofh "if (length(old_office)>0 & length(new_office)>0){\n";
+	print $ofh "  office_scatter_folder<-paste0(newdir,\"/Projections/Office/Setting_Scatter\")\n";
+	print $ofh "  dir.create(office_scatter_folder)\n";
+	print $ofh "  file.copy(from=old_proj_files[old_office],to=paste0(office_scatter_folder,\"/old_projections.txt\"))\n";
+	print $ofh "  file.copy(from=new_proj_files[new_office],to=paste0(office_scatter_folder,\"/new_projections.txt\"))\n";
+	print $ofh "  setwd(office_scatter_folder)\n";
+	print $ofh "  sink(\"Summary_Rout.txt\",append = T)\n";
+	print $ofh "  source(\"" . $scatterScript . "\")\n";
+	print $ofh "  sink()\n";
+	print $ofh "  }\n";
+	print $ofh "\n";
+	print $ofh "#OP projections compare\n";
+	print $ofh "old_op<-grep(\"/OP/hospital_projections.txt\",old_proj_files)\n";
+	print $ofh "new_op<-grep(\"/OP/hospital_projections.txt\",new_proj_files)\n";
+	print $ofh "\n";
+	print $ofh "if (length(old_op)>0 & length(new_op)>0){\n";
+	print $ofh "  op_scatter_folder<-paste0(newdir,\"/Projections/Hospital/OP/Setting_Scatter\")\n";
+	print $ofh "  dir.create(op_scatter_folder)\n";
+	print $ofh "  file.copy(from=old_proj_files[old_op],to=paste0(op_scatter_folder,\"/old_projections.txt\"))\n";
+	print $ofh "  file.copy(from=new_proj_files[new_op],to=paste0(op_scatter_folder,\"/new_projections.txt\"))\n";
+	print $ofh "  setwd(op_scatter_folder)\n";
+	print $ofh "  sink(\"Summary_Rout.txt\",append = T)\n";
+	print $ofh "  source(\"" . $scatterScript . "\")\n";
+	print $ofh "  sink()\n";
+	print $ofh "  }\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "#IP projections compare\n";
+	print $ofh "old_ip<-grep(\"/IP/hospital_projections.txt\",old_proj_files)\n";
+	print $ofh "new_ip<-grep(\"/IP/hospital_projections.txt\",new_proj_files)\n";
+	print $ofh "\n";
+	print $ofh "if (length(old_ip)>0 & length(new_ip)>0){\n";
+	print $ofh "  ip_scatter_folder<-paste0(newdir,\"/Projections/Hospital/IP/Setting_Scatter\")\n";
+	print $ofh "  dir.create(ip_scatter_folder)\n";
+	print $ofh "  file.copy(from=old_proj_files[old_ip],to=paste0(ip_scatter_folder,\"/old_projections.txt\"))\n";
+	print $ofh "  file.copy(from=new_proj_files[new_ip],to=paste0(ip_scatter_folder,\"/new_projections.txt\"))\n";
+	print $ofh "  setwd(ip_scatter_folder)\n";
+	print $ofh "  sink(\"Summary_Rout.txt\",append = T)\n";
+	print $ofh "  source(\"" . $scatterScript . "\")\n";
+	print $ofh "  sink()\n";
+	print $ofh "  }\n";
+	print $ofh "\n";
+	print $ofh "#Combined hospital projections compare\n";
+	print $ofh "old_hosp<-grep(\"/Hospital/hospital_projections.txt\",old_proj_files)\n";
+	print $ofh "new_hosp<-grep(\"/Hospital/hospital_projections.txt\",new_proj_files)\n";
+	print $ofh "\n";
+	print $ofh "if (length(old_hosp)>0 & length(new_hosp)>0){\n";
+	print $ofh "  hosp_scatter_folder<-paste0(newdir,\"/Projections/Hospital/Setting_Scatter\")\n";
+	print $ofh "  dir.create(hosp_scatter_folder)\n";
+	print $ofh "  file.copy(from=old_proj_files[old_hosp],to=paste0(hosp_scatter_folder,\"/old_projections.txt\"))\n";
+	print $ofh "  file.copy(from=new_proj_files[new_hosp],to=paste0(hosp_scatter_folder,\"/new_projections.txt\"))\n";
+	print $ofh "  setwd(hosp_scatter_folder)\n";
+	print $ofh "  sink(\"Summary_Rout.txt\",append = T)\n";
+	print $ofh "  source(\"" . $scatterScript . "\")\n";
+	print $ofh "  sink()\n";
+	print $ofh "  }\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
