@@ -70,8 +70,8 @@ foreach my $x ($oldDir,$newDir)
 }
 
 my $rScript = generateRScript(oldDir=>$oldDir,newDir=>$newDir);
-#system("R CMD BATCH --vanilla " . $rScript);
-#system("rm " . $rScript);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
 
 #system("chmod 777 -R --silent .");
 
