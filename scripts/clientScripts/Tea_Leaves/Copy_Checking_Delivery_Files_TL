@@ -1,0 +1,166 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $fileCheckScript;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$fileCheckScript = $mvDir . "/scripts/clientScripts/Tea_Leaves/Delivery_File_Check/TL_Delivery_File_Check.R";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$fileCheckScript = $sitePath . "/scripts/clientScripts/Tea_Leaves/Delivery_File_Check/TL_Delivery_File_Check.R";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $oldDate;
+my $newDate;
+my $debug;
+
+GetOptions(
+	"oldDate=s"  =>\$oldDate,
+	"newDate=s"	=>\$newDate,
+	"debug"     =>\$debug
+);
+
+die "oldDate=> parameter is required\n" unless $oldDate;
+die "newDate=> parameter is required\n" unless $newDate;
+$oldDate = normalizeDate(date=>$oldDate,underscore=>"Y");
+$newDate = normalizeDate(date=>$newDate,underscore=>"Y");
+my $rScript = generateRScript(oldDate=>$oldDate,newDate=>$newDate);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $oldDate = $args{oldDate} || die "oldDate=> parameter is required\n";
+	my $newDate = $args{newDate} || die "newDate=> parameter is required\n";
+	my $returnFile = "Copy_Checking_Delivery_Files.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "#Directory dates\n";
+	print $ofh "old_dir_date <- '" . $oldDate. "'\n";
+	print $ofh "new_dir_date <- '" . $newDate . "'\n";
+	print $ofh "\n";
+	print $ofh "setwd('/vol/cs/clientprojects/Tea_Leaves/')\n";
+	print $ofh "\n";
+	print $ofh "#Locating Zip3 PayerMix,,MasterFile\n";
+	print $ofh "mf_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/\",new_dir_date,\"_PxDx_and_INA/Masterfile/Delivery\", sep=\"\")\n";
+	print $ofh "# boardcert_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/MasterFile/quarterly_masterfile/\",mf_date,\"/Board_Certs\", sep=\"\")\n";
+	print $ofh "payer_ar_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/\",new_dir_date,\"_PxDx_and_INA\", sep=\"\")\n";
+	print $ofh "mapping_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/TeaLeaves_Emdeon_Discussions\", sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "#Added 8/27/19 to copy Updated Specialties file if found\n";
+	print $ofh "spec_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/\",new_dir_date,\"_PxDx_and_INA/Masterfile/Updated_PIID_Specialty_File\", sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "#Automatically finding and listing miscellaneous delivery files \n";
+	print $ofh "misc_files <- c(list.files(payer_ar_dir, pattern=\"7z\", recursive = T, full.names = T))\n";
+	print $ofh "mf_zip_files <- c(list.files(mf_dir, pattern=\"zip\", full.names = T))\n";
+	print $ofh "mf_deliv_doc <- c(list.files(mf_dir, pattern=\"Delivery_Documentation\", full.names = T))\n";
+	print $ofh "mapping_file <- c(list.files(mapping_dir, pattern=\".csv\", full.names = T))\n";
+	print $ofh "boardcert_file <- c(list.files(mf_dir, pattern=\"HMS_Board_Certifications\", full.names = T))\n";
+	print $ofh "\n";
+	print $ofh "#Added 8/27/19 to copy Updated Specialties file if found\n";
+	print $ofh "spec_file <- c(list.files(spec_dir, pattern=\"Updated_PIID_Specialties\", full.names = T))\n";
+	print $ofh "\n";
+	print $ofh "#Creating final list of misc files to copy\n";
+	print $ofh "final_misc_files <- c(misc_files, mf_zip_files, mf_deliv_doc, mapping_file, boardcert_file,spec_file)\n";
+	print $ofh "\n";
+	print $ofh "#Checking that all misc files are available\n";
+	print $ofh "#ifelse (file.exists(final_misc_files)==FALSE){\n";
+	print $ofh "#cat(\"\\nmissing misc files:\\n\")}\n";
+	print $ofh "\n";
+	print $ofh "#Locating delivery folder to copy misc files to\n";
+	print $ofh "new_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/\", new_dir_date, \"_Tea_Leaves_Emdeon_Delivery/7z_Files\", sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "#Copy the files to output directory\n";
+	print $ofh "file.copy(final_misc_files, new_dir)\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	print $ofh "source(\"" . $fileCheckScript . "\")\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
