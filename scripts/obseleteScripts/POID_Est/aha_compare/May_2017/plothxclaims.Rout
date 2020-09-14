@@ -1,0 +1,103 @@
+
+R version 3.3.1 (2016-06-21) -- "Bug in Your Hair"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ##code to compare aha volumes to wk volumes for hosp poids
+> 
+> #pull data from Sankar's oracle table
+> 
+> library(ROracle)
+Loading required package: DBI
+> drv <- dbDriver("Oracle")
+> con <- dbConnect(drv, username = "claims_usr",
++ password = "claims_usr123", dbname = "pldwh2dbr")
+> aha_wk<-"select t.aha_hms_poid as HMS_POID, t.wh_cnt as WKTot,t.aha_cnt as AHATot
++  from wh_stage.POES_QA_AHA t
++ where t.wh_hms_poid is not null"
+> 
+> 
+> rs <- dbSendQuery(con, aha_wk)
+> aha_wk2 <- fetch(rs)
+> 
+> #get xwalk for Inst claims only
+> xwalk<-"select distinct (t.hms_poid) from wh_stage.poes_final_xwalk t
++ where t.claim_type = 'I'
++ "
+> 
+> rs2<- dbSendQuery(con,xwalk)
+> xwalk2<-fetch(rs2)
+> 
+> dbDisconnect(con)
+[1] TRUE
+> 
+> 
+> #compare counts
+> ##### we expect total POIDs in xwalk to be similar to POIDs with AHA capture
+> print(nrow(xwalk2))
+[1] 1216
+> print(nrow(aha_wk2))
+[1] 829
+> 
+> #fix column names
+> co <-aha_wk2
+> colnames(co)
+[1] "HMS_POID" "WKTOT"    "AHATOT"  
+> 
+> 
+> #analysis of pull
+> colnames(co)<-c("HMS_POID","WKTot","AHATot")
+> vec<-co$WKTot/co$AHATot
+> vec.discr<-cut(vec,breaks=c(-Inf,0.5,0.8,1.25,2.,Inf),labels=F)
+> co<-cbind(co,vec.discr)
+> #set poids with super low counts and missing aha to poid class 1
+> idx<-which(is.na(co$AHATot) & co$WKTot < 100)
+> co[idx,"vec.discr"]<-1
+> 
+> 
+> #output everything with non-missing vec.discr
+> co<-subset(co,!is.na(co$vec.discr))
+> write.table(co,file="comblatest.txt",col.names=T,row.names=F,quote=F,sep="\t")
+> 
+> co2<-co[,c(1,4)]
+> write.table(co2,file="poid_capture.txt",col.names=T,row.names=F,quote=F,sep="\t")
+> 
+> 
+> co<-subset(co,WKTot > 0)
+> xr<-range(co$AHATot,na.rm=T)
+> yr<-range(co$WKTot,na.rm=T)
+> br<-range(c(xr,yr))
+> print(br)
+[1]      1 108964
+> brx<-br[1]
+> br2<-2*br[2]
+> print(c(br2,br2))
+[1] 217928 217928
+> 
+> 
+> pdf("ahaplotlatest.pdf")
+> plot(WKTot~AHATot,data=co,log="xy",xlim=br,ylim=br,pch=4,cex=.75,ylab="WK",
++ xlab="AHA",col=vec.discr)
+> lines(br,br,lwd=2,col="red")
+> lines(br,c(2,br2),lwd=2,col="green")
+> dev.off()
+null device 
+          1 
+> 
+> proc.time()
+   user  system elapsed 
+  1.078   0.078   2.019 
