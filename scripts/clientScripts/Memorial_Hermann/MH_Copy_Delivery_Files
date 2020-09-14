@@ -65,8 +65,8 @@ die "delivDate=> parameter is required\n" unless $delivDate;
 $dirDate = normalizeDate(date=>$dirDate,underscore=>"Y");
 $delivDate = normalizeDate(date=>$delivDate,underscore=>"Y");
 my $rScript = generateRScript(dirDate=>$dirDate,delivDate=>$delivDate);
-#system("R CMD BATCH --vanilla " . $rScript);
-#system("rm " . $rScript);
+system("R CMD BATCH --vanilla " . $rScript);
+system("rm " . $rScript);
 
 #system("chmod 777 -R --silent .");
 
