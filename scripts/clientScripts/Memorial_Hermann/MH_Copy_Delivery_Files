@@ -1,0 +1,151 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $folderGenScript;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$folderGenScript = $mvDir . "/scripts/clientScripts/Memorial_Hermann/Creating_MH_delivery_folders.R";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$folderGenScript = $sitePath . "/scripts/clientScripts/Memorial_Hermann/Creating_MH_delivery_folders.R";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $dirDate;
+my $delivDate;
+my $debug;
+
+GetOptions(
+	"dirDate=s"		=>\$dirDate,
+	"delivDate=s"	=>\$delivDate,
+	"debug"			=>\$debug
+);
+
+die "dirDate=> parameter is required\n" unless $dirDate;
+die "delivDate=> parameter is required\n" unless $delivDate;
+$dirDate = normalizeDate(date=>$dirDate,underscore=>"Y");
+$delivDate = normalizeDate(date=>$delivDate,underscore=>"Y");
+my $rScript = generateRScript(dirDate=>$dirDate,delivDate=>$delivDate);
+#system("R CMD BATCH --vanilla " . $rScript);
+#system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $dirDate = $args{dirDate} || die "dirDate=> parameter is required\n";
+	my $delivDate = $args{delivDate} || die "delivDate=> parameter is required\n";
+	my $returnFile = "MH_Copy_Delivery_Files.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "#Directory dates\n";
+	print $ofh "dir_date <- \"2018_01_31\"\n";
+	print $ofh "deliv_date <- \"2018_02_16\"\n";
+	print $ofh "\n";
+	print $ofh "setwd('/vol/cs/clientprojects/Memorial_Hermann/')\n";
+	print $ofh "\n";
+	print $ofh "#Locating the INA directory\n";
+	print $ofh "ina_dir <- paste(\"/vol/cs/clientprojects/Memorial_Hermann/\",dir_date,\"_MH_PxDxs_and_INAs/\",dir_date,\"_INAs\", sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "#Finding and listing the *filtered.tab and network files from each INA\n";
+	print $ofh "dx_filtered_files <- c(list.files(ina_dir, pattern=\"grp1_filtered.tab\", recursive = T, full.names = T))\n";
+	print $ofh "px_filtered_files <- c(list.files(ina_dir, pattern=\"grp2_filtered.tab\", recursive = T, full.names = T))\n";
+	print $ofh "network_files <- c(list.files(ina_dir, pattern=\"network_full.txt\", recursive = T, full.names = T))\n";
+	print $ofh "\n";
+	print $ofh "#Creating final list of files to copy\n";
+	print $ofh "list_filestocopy <- c(dx_filtered_files, px_filtered_files, network_files)\n";
+	print $ofh "\n";
+	print $ofh "#Producing delivery directories in delivery folder\n";
+	print $ofh "source(\"" . $folderGenScript . "\")\n";
+	print $ofh "-----------------------------------------------------------------------------------------------------------------\n";
+	print $ofh "#Locating delivery folder to copy misc files to\n";
+	print $ofh "new_dir <- paste(\"/vol/cs/clientprojects/Tea_Leaves/\", dir_date, \"_MH_Delivery/Flat_Files_Work\", sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "#Copy the files to output directory\n";
+	print $ofh "file.copy(final_misc_files, new_dir)\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
