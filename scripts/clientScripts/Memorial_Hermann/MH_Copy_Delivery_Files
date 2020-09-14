@@ -87,8 +87,8 @@ sub generateRScript
 	my $returnFile = "MH_Copy_Delivery_Files.R";
 	open my $ofh, ">", $returnFile;
 	print $ofh "#Directory dates\n";
-	print $ofh "dir_date <- \"2018_01_31\"\n";
-	print $ofh "deliv_date <- \"2018_02_16\"\n";
+	print $ofh "dir_date <- \"" . $dirDate . "\"\n";
+	print $ofh "deliv_date <- \"" . $delivDate . "\"\n";
 	print $ofh "\n";
 	print $ofh "setwd('/vol/cs/clientprojects/Memorial_Hermann/')\n";
 	print $ofh "\n";
