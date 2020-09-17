@@ -1,0 +1,225 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $copyScript;
+my $laScript;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$copyScript = "perl " . $lib . "/aggr/ina/copyInaJob.pl";
+		$laScript = "perl " . $lib . "/aggr/loadAggr.pl";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$copyScript = "copyInaJob.pl";
+		$laScript = "loadAggr.pl";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $prev;
+my $curr;
+my $vint;
+my $debug;
+
+GetOptions(
+	"prev=s"		=>\$prev,
+	"curr=s"		=>\$curr,
+	"vint=s"		=>\$vint,
+	"debug"     =>\$debug
+);
+
+die "prev=> parameter is required\n" unless $prev;
+die "curr=> parameter is required\n" unless $curr;
+die "vint=> parameter is required\n" unless $vint;
+$prev = normalizeDate(date=>$prev,underscore=>"Y");
+$curr = normalizeDate(date=>$curr,underscore=>"Y");
+$vint = normalizeDate(date=>$vint,yyyymmdd=>"Y");
+my $shScript = generateScript(prev=>$prev,curr=>$curr,vint=>$vint);
+system("chmod 777 -R --silent " . $shScript);
+system("./" . $shScript);
+system("rm " . $shScript);
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateScript
+{
+	my %args = @_;
+	my $prev = $args{prev} || die "prev=> parameter is required\n";
+	my $curr = $args{curr} || die "curr=> parameter is required\n";
+	my $vint = $args{vint} || die "vint=> parameter is required\n";
+	my $returnFile = "run_monthly_INA_refresh_CPM.sh";
+	open my $ofh, ">", $returnFile;
+	print $ofh "###This script runs the monthly refreshes of CPM INAs, both Emd and Non.\n";
+	print $ofh "#CANNOT be run until Allaire has announced the monthly vintage.\n";
+	print $ofh "\n";
+	print $ofh "##MUST be run from sas box WRONG. part shell part sas\n";
+	print $ofh "#[ \$HOSTNAME != \"plsas01.hmsonline.com\" ] && echo \"This script must be run from plsas01\" && exit 2\n";
+	print $ofh "\n";
+	print $ofh "###update these\n";
+	print $ofh "Previous=" . $prev . "\n";
+	print $ofh "Current=" . $curr . "\n";
+	print $ofh "vintage=" . $vint . "\n";
+	print $ofh "log=/vol/cs/CS_PayerProvider/Ryan/utilities/CPM/\"\$vintage\"_ina.log\n";
+	print $ofh "\n";
+	print $ofh "#remove old log if existing\n";
+	print $ofh "[ -e \$log ] && rm -f \$log\n";
+	print $ofh "logrun() {\n";
+	print $ofh "  echo \$\@ >> \$log\n";
+	print $ofh "  eval \$\@\n";
+	print $ofh "}\n";
+	print $ofh "\n";
+	print $ofh "###non updating variables\n";
+	print $ofh "emd=_CPM_INA_EMD\n";
+	print $ofh "non=_CPM_INA_nonEMD\n";
+	print $ofh "CPM_dir=/vol/cs/clientprojects/CPM\n";
+	print $ofh "\n";
+	print $ofh "###make new dirs\n";
+	print $ofh "emd_dir=`echo \"\$CPM_dir\"/\"\$Current\"\"\$emd\"/\"\$Current\"\"\$emd\"_Cloning/`\n";
+	print $ofh "non_dir=`echo \"\$CPM_dir\"/\"\$Current\"\"\$non\"/\"\$Current\"\"\$non\"_Cloning/`\n";
+	print $ofh "\n";
+	print $ofh "logrun mkdir -p \$emd_dir\n";
+	print $ofh "logrun mkdir -p \$non_dir\n";
+	print $ofh "\n";
+	print $ofh "###copy cloning dirs\n";
+	print $ofh "if [ ! -e \$emd_dir/configs ] && [ ! -e \$CPM_dir/config_archive/\$Current\"_EMD_config\" ];then\n";
+	print $ofh " echo \"copying\"\n";
+	print $ofh " logrun cp -r \"\$CPM_dir\"/\"\$Previous\"\"\$emd\"/\"\$Previous\"\"\$emd\"_Cloning/configs \$emd_dir\n";
+	print $ofh " logrun cp -r \"\$CPM_dir\"/\"\$Previous\"\"\$non\"/\"\$Previous\"\"\$non\"_Cloning/configs \$non_dir\n";
+	print $ofh "fi\n";
+	print $ofh "\n";
+	print $ofh "###set up settings files (emd)\n";
+	print $ofh "if [ ! -e \$emd_dir/inaProjects/\"\$Current\"_CPMINA_EMD/config/settings.cfg ];then\n";
+	print $ofh " pushd \$emd_dir\n";
+	print $ofh " logrun \"" . $copyScript . " -configDir configs -vintage \$vintage -prefix \"\$Current\"_CPMINA\"\n";
+	print $ofh " popd\n";
+	print $ofh " cp -r \$emd_dir/inaProjects/\"\$Current\"_CPMINA_EMD/config \"\$CPM_dir\"/\"\$Current\"\"\$emd\"/\n";
+	print $ofh " grep \"VINTAGE\"	\"\$CPM_dir\"/\"\$Current\"\"\$emd\"/config/settings.cfg\n";
+	print $ofh " grep \"JOB_QUEUE\" \"\$CPM_dir\"/\"\$Current\"\"\$emd\"/config/settings.cfg\n";
+	print $ofh "fi\n";
+	print $ofh "\n";
+	print $ofh "###set up settings files (non)\n";
+	print $ofh "if [ ! -e \$non_dir/inaProjects/\"\$Current\"_CPMINA/config/settings.cfg ];then\n";
+	print $ofh " pushd \$non_dir\n";
+	print $ofh " logrun \"" . $copyScript . " -configDir configs -vintage \$vintage -prefix \"\$Current\"_CPMINA\"\n";
+	print $ofh " popd\n";
+	print $ofh " cp -r \$non_dir/inaProjects/\"\$Current\"_CPMINA/config \"\$CPM_dir\"/\"\$Current\"\"\$non\"/\n";
+	print $ofh " grep \"VINTAGE\" \"\$CPM_dir\"/\"\$Current\"\"\$non\"/config/settings.cfg\n";
+	print $ofh " grep \"JOB_QUEUE\" \"\$CPM_dir\"/\"\$Current\"\"\$non\"/config/settings.cfg\n";
+	print $ofh "fi\n";
+	print $ofh "\n";
+	print $ofh "#step5\n";
+	print $ofh "#cd to config\n";
+	print $ofh "#log onto ***PLSAS***\n";
+	print $ofh "#maybe can do this with ssh??\n";
+	print $ofh "#run nohup " . $laScript . " -config settings.cfg >| stderrout_ina 2>&1 &\n";
+	print $ofh "#watch for it to finish\n";
+	print $ofh "\n";
+	print $ofh "###step 6 - Compare sizes\n";
+	print $ofh "#cp comparesizes.pl from previous run for both EMD and non, replace olddir\n";
+	print $ofh "#run using nohup perl comparesizes.pl >| stderroutcompare 2>&1 &\n";
+	print $ofh "\n";
+	print $ofh "###step 7 - run compare line counts\n";
+	print $ofh "#this probably replaces step 6 - need to discuss\n";
+	print $ofh "#run this for EMD and non\n";
+	print $ofh "#Rscript --vanilla line_count_QA_v1.R /vol/cs/clientprojects/CPM/2016_05_15_CPM_INA_nonEMD/ /vol/cs/clientprojects/CPM/2016_04_15_CPM_INA_nonEMD/ /vol/cs/clientprojects/CPM/2016_05_15_CPM_QA/INA_nonEMD_linecount_QA.csv Apr_May /vol/cs/clientprojects/CPM/2016_05_15_CPM_QA/INA_linecounts_input.txt 5\n";
+	print $ofh "\n";
+	print $ofh "#step 8\n";
+	print $ofh "#archive config folders so they don't interfere with subsequent processes\n";
+	print $ofh "if [ -e \"\$CPM_dir\"/\"\$Current\"\"\$emd\"/config ];then\n";
+	print $ofh " mv \"\$CPM_dir\"/\"\$Current\"\"\$emd\"/config \$CPM_dir/config_archive/\$Current\"_EMD_config\"\n";
+	print $ofh " mv \"\$CPM_dir\"/\"\$Current\"\"\$non\"/config \$CPM_dir/config_archive/\$Current\"_nonEMD_config\"\n";
+	print $ofh "fi\n";
+	print $ofh "\n";
+	print $ofh "#step 9 - zip up for deliverables\n";
+	print $ofh "delivery_dir=\$CPM_dir/\$Current\"_CPM_Delivery\"\n";
+	print $ofh "ina_non=\"\$CPM_dir\"/\"\$Current\"\"\$non\"\n";
+	print $ofh "logrun mkdir -p \$delivery_dir\n";
+	print $ofh "if [ ! -e \$delivery_dir/2016_04_15_INA_Dermatology.zip ];then\n";
+	print $ofh " for i in `ls -d \$ina_non/*/Comb`;do\n";
+	print $ofh "  service=`echo \$i | cut -d \"/\" -f 7`\n";
+	print $ofh "  echo \"zipping \$service\"\n";
+	print $ofh "  logrun zip -j \$delivery_dir/\$Current\"_INA_\"\$service\".zip\" \$i/den1summarycounts.txt \$i/denom_fordelivery.txt \$i/links_fordelivery.txt \$i/linksummarycounts.txt\n";
+	print $ofh " done\n";
+	print $ofh "fi\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
