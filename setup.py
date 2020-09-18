@@ -79,6 +79,7 @@ setup(name='mvUtil',
 					'scripts/scripts/qc_projections_v3.sh',
 				'scripts/scripts/scatterQC/ScatterQC_Loop_Summary',
 					'scripts/scripts/scatterQC/scatterQC_symlink',
+					'scripts/scripts/scatterQC/scatterQC_v2.2',
 					'scripts/scripts/scatterQC/Setting_ScatterQC_Loop'
 			],
       zip_safe=False)
