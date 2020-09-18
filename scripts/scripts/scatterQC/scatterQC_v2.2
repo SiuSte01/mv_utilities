@@ -73,8 +73,8 @@ foreach my $x ($oldDir,$newDir,$outDir)
 }
 
 my $rScript = generateRScript(oldDir=>$oldDir,newDir=>$newDir,outDir=>$outDir);
-#system("Rscript --vanilla " . $rScript);
-#system("rm " . $rScript);
+system("Rscript --vanilla " . $rScript);
+system("rm " . $rScript);
 
 #system("chmod 777 -R --silent .");
 
