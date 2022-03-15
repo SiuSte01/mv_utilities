@@ -1,0 +1,4 @@
+name	fields
+"HMS_Individuals_*_IP.tab"	"RANK"
+"HMS_Organizations_*_IP.tab"	"RANK"
+"HMS_Network_*.txt"	"RANK,NUM_CONN,SOR_VALUE"

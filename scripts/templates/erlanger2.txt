@@ -1,0 +1,8 @@
+name	fields
+"HMS_Individuals_*_IP.tab"	"RANK"
+"HMS_Individuals_*_OPOFFASC.tab"	"RANK"
+"HMS_Organizations_*_IP.tab"	"RANK"
+"HMS_Organizations_*_OPOFFASC.tab"	"RANK"
+"HMS_PxDx_*_IP.tab"	"RANK"
+"HMS_PxDx_*_OPOFFASC.tab"	"RANK"
+"HMS_Network_*.tab"	"RANK,NUM_CONN,SOR_VALUE"
