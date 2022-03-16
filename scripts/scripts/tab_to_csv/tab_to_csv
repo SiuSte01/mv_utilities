@@ -1,0 +1,135 @@
+#!/usr/bin/env perl
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+my $rFunctions;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+		$rFunctions = $mvDir . "/scripts/scripts/hms_R_functions/hms_R_functions.R";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+		$rFunctions = $sitePath . "/scripts/scripts/hms_R_functions/hms_R_functions.R";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $debug;
+my $inFile;
+
+GetOptions(
+	"debug"     =>\$debug,
+	"inFile=s"	=>\$inFile
+);
+
+die "-inFile parameter is required\n" unless $inFile;
+
+my $rScript = generateRScript(inFile=>$inFile);
+my $systemCall = join(" ","Rscript","--vanilla",$rScript,$inFile);
+system($systemCall);
+system("rm " . $rScript);
+
+system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $returnFile = "tab_to_csv.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "args = commandArgs(trailingOnly=TRUE)\n";
+	print $ofh "file=args[1]\n";
+	print $ofh "\n";
+	print $ofh "source(\"" . $rFunctions . "\")\n";
+	print $ofh "\n";
+	print $ofh "tab<-read.hms(file)\n";
+	print $ofh "\n";
+	print $ofh "name<-basename(file)\n";
+	print $ofh "\n";
+	print $ofh "name<-paste(strsplit(name,\"\\\\.\")[[1]][1],\".csv\",sep=\"\")\n";
+	print $ofh "\n";
+	print $ofh "write.csv(tab,name,na=\"\",row.names=F)\n";
+	print $ofh "\n";
+	print $ofh "\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
