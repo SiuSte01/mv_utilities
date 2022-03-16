@@ -1,0 +1,160 @@
+#!/usr/bin/env perl
+
+=head1 NAME
+
+INA_filter_fix - generates R code which filters down a network_full.txt file to only relationships found in a given links.txt file. The R script is deleted after the process completes
+
+=head1 EXAMPLE
+
+   INA_filter_fix -linksFile <links.txt file> -networkFIle <network_full.txt file>
+
+=head1 OUTPUT
+
+	Generates a hard-coded filename, network_full.txt file at the running location
+
+=cut
+
+#Includes
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+use Cwd;
+my $scriptDir;
+my $libDir;
+my $envName;
+BEGIN
+{
+	$scriptDir = Cwd::abs_path(dirname($0));
+	my $lib = dirname($scriptDir);
+	if($lib =~ m/mv_utilities/)
+	{
+		my $mvDir = $lib;
+		$lib =~ s/mv_utilities.*/perl_utilities/;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$libDir = Cwd::abs_path($lib) . "/lib";
+	}
+	else
+	{
+		$lib = `conda info -e | grep '*'`;
+		$lib =~ s/^.*\*//;
+		$lib =~ s/^\s+|\s+$//g;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
+		$sitePath =~ s/^\s+|\s+$//g;
+		$sitePath =~ s/('|,)//g;
+		$libDir = $sitePath . "/lib";
+	}
+	$envName = `conda info -e | grep '*'`;
+	$envName =~ s/\*.*//;
+	$envName =~ s/^\s+|\s+$//g;
+}
+use lib $libDir;
+use MiscFunctions;
+
+my @ogArgs = @ARGV;
+if(-e "debug")
+{
+	print "ARGV for " . $0 . ":\n";
+	print Dumper(@ogArgs);
+}
+
+my $timeBegin = time();
+
+my $debug;
+my $linksFile;
+my $networkFile;
+
+GetOptions(
+	"debug"				=>\$debug,
+	"linksFile=s"		=>\$linksFile,
+	"networkFile=s"	=>\$networkFile
+);
+
+die "-linksFile parameter is required\n" unless $linksFile;
+die "-networkFile parameter is required\n" unless $networkFile;
+
+foreach my $x ($linksFile,$networkFile)
+{
+	$x =~ s/\/+$//;
+	$x = Cwd::abs_path($x);
+}
+
+my $rScript = generateRScript(linksFile=>$linksFile,networkFile=>$networkFile);
+system("Rscript --vanilla " . $rScript);
+system("rm " . $rScript);
+
+#system("chmod 777 -R --silent .");
+
+my $timeEnd = time();
+
+my $runTime = $timeEnd - $timeBegin;
+#print "\nProcess Complete: " . $0 . "\n";
+my $minutes = $runTime/60;
+#print "Job took " . $minutes ." minutes\n";
+
+#End of main code
+
+sub generateRScript
+{
+	my %args = @_;
+	my $linksFile = $args{linksFile} || die "linksFile=> parameter is required\n";
+	my $networkFile = $args{networkFile} || die "networkFile=> parameter is required\n";
+	my $returnFile = "INA_filter_fix.R";
+	open my $ofh, ">", $returnFile;
+	print $ofh "links <- read.table(\"" . $linksFile . "\",header=T,sep=\"\\t\",as.is=T,quote=\"\\\"\",comment.char=\"\")\n";
+	print $ofh "network <- read.table (\"" . $networkFile . "\",header=T,sep=\"\\t\",as.is=T,quote=\"\\\"\",comment.char=\"\")\n";
+	print $ofh "\n";
+	print $ofh "dim(links)\n";
+	print $ofh "dim(network)\n";
+	print $ofh "\n";
+	print $ofh "links\$cat<-(paste(links\$VAR1,links\$COUNT,sep=\"\"))\n";
+	print $ofh "network\$cat<-(paste(network\$HMS_PIID1,\":\",network\$HMS_PIID2,network\$SHAREDPATIENTCOUNT,sep=\"\"))\n";
+	print $ofh "\n";
+	print $ofh "#subset to only records in links\n";
+	print $ofh "merged <- merge(links,network,by=\"cat\")\n";
+	print $ofh "dim(merged)\n";
+	print $ofh "\n";
+	print $ofh "colnames(merged)\n";
+	print $ofh "network_fixed <- merged[,c(5:57)]\n";
+	print $ofh "\n";
+	print $ofh "write.table(network_fixed,file=\"network_full.txt\",col.names=T,row.names=F,\n";
+	print $ofh "quote=F,sep=\"\\t\")\n";
+	close $ofh;
+	return $returnFile;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
