@@ -1,0 +1,35 @@
+file<-read.csv("/vol/cs/clientprojects/Mount_Carmel/2016_05_19_Mammography/code_xwalk/codes.tab",header=F)
+colnames(file)<-"code"
+library(ROracle)
+drv <- dbDriver("Oracle")
+con <- dbConnect(drv, username = "claims_usr",
+password = "claims_usr123", dbname = "pldwh2dbr")
+
+query<-"SELECT * FROM Claims_Aggr.Claims_Smry_Px_Mvw WHERE Code_Scheme = 'HCPCS'"
+rs <- dbSendQuery(con, query)
+hcpcs_px <- fetch(rs)
+
+query<-"SELECT * FROM Claims_Aggr.Claims_Smry_Px_Mvw WHERE Code_Scheme = 'ICD9'"
+rs <- dbSendQuery(con, query)
+icd9_px <- fetch(rs)
+
+query<-"SELECT * FROM Claims_Aggr.Claims_Smry_Px_Mvw WHERE Code_Scheme = 'ICD10'"
+rs <- dbSendQuery(con, query)
+icd10_px <- fetch(rs)
+
+
+query<-"SELECT * FROM Claims_Aggr.Claims_Smry_Dx_Mvw WHERE Code_Scheme = 'ICD9'"
+rs <- dbSendQuery(con, query)
+icd9_dx <- fetch(rs)
+
+query<-"SELECT * FROM Claims_Aggr.Claims_Smry_Dx_Mvw WHERE Code_Scheme = 'ICD10'"
+rs <- dbSendQuery(con, query)
+icd10_dx <- fetch(rs)
+
+file[,c("hcpcs_px","icd9_px","icd10_px","icd9_dx","icd10_dx")]<-0
+
+for (i in c("hcpcs_px","icd9_px","icd10_px","icd9_dx","icd10_dx")){
+ temp<-get(i)
+ file[[i]][which(file$code %in% temp$ADDNL_PROCEDURE_CODE)]<-1
+}
+
