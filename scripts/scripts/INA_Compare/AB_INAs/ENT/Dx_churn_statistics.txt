@@ -1,0 +1,64 @@
+Churn results for AB
+
+
+dx denom good 10% =  91.2293381631933
+
+
+dx denom good 25% =  97.2272173685102
+
+
+denom change distr
+
+
+>2xIncr Betwn10%and2xIncr <10%Incr NoChange <10%Decr Betwn10%and2xDecr >2xDecr
+
+
+43424
+129041
+125074
+387721
+116673
+107465
+17613
+
+
+link change distr
+
+
+percent links good =  91.3374206493031
+
+
+>2xIncr Betwn10%and2xIncr <10%Incr NoChange <10%Decr Betwn10%and2xDecr >2xDecr
+
+
+427191
+379238
+44443
+1669067
+46306
+313077
+271564
+
+
+count of dropped links =  260068
+
+
+percent of dropped links =  9.35466118003374
+
+
+count of net new links =  370796
+
+
+percent of net new links =  13.3375538202001
+
+
+count of dropped PIIDs =  13775
+
+
+percent of dropped PIIDs =  2.79583598032868
+
+
+count of net new PIIDs =  20117
+
+
+percent of net new PIIDs =  4.08303683602701
