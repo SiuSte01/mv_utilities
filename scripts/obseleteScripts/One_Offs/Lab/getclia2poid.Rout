@@ -1,0 +1,45 @@
+
+R version 3.1.0 (2014-04-10) -- "Spring Dance"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(ROracle)
+Loading required package: DBI
+> drv <- dbDriver("Oracle")
+> 
+> #set up the database connection
+> con <- dbConnect(drv, username = "hms_pe", password = "hms_pe123", dbname = "pldeldb")
+> 
+> #set up your query
+> myq1<-" select org_pos_id as clia, hms_poid from ddb_20160720.m_org_pos
++ where sources like '%POS_CLIA%'"
+> 
+> #executing the query
+> rs <- dbSendQuery(con, myq1)
+> data <- fetch(rs)
+> 
+> dbDisconnect(con)
+[1] TRUE
+> 
+> #output the data to a file called data.txt
+> write.table(data,file="clia2poid_20160720.txt",col.names=T,row.names=F,quote=F,
++ sep="\t",na="")
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.718   0.136   4.957 
