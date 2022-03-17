@@ -1,0 +1,28 @@
+COUNT(DISTINCTPROF.CLAIM_ID),POS_TYPE_CODE,DESCRIPTION,ID_VALUE,VENDOR_NAME
+6,12,Home,PITF2775B5,Wolters Kluwer Old
+13,81,Independent Laboratory,PITF2775B5,Emdeon
+1,23,Emergency Room-Hospital,PITF2775B5,Emdeon
+1,24,Ambulatory Surgical Center,PI0KXBK9C1,Emdeon
+30,21,Inpatient Hospital,PITF2775B5,CMS Part B
+13,81,Independent Laboratory,PITF2775B5,Wolters Kluwer Old
+7,21,Inpatient Hospital,PITF2775B5,Wolters Kluwer Old
+20,24,Ambulatory Surgical Center,PITF2775B5,Emdeon
+1,12,Home,PITF2775B5,Wolters Kluwer
+1,19,Unassigned,PI0KXBK9C1,Emdeon
+426,11,Office,PITF2775B5,Emdeon
+105,21,Inpatient Hospital,PITF2775B5,Emdeon
+100,22,Outpatient Hospital,PITF2775B5,Wolters Kluwer
+78,11,Office,PITF2775B5,CMS Part B
+22,22,Outpatient Hospital,PITF2775B5,Wolters Kluwer Old
+6,21,Inpatient Hospital,PITF2775B5,Wolters Kluwer
+6,24,Ambulatory Surgical Center,PITF2775B5,CMS Part B
+3,19,Unassigned,PITF2775B5,Emdeon
+3,24,Ambulatory Surgical Center,PITF2775B5,Wolters Kluwer Old
+3,22,Outpatient Hospital,PI0KXBK9C1,Emdeon
+3,81,Independent Laboratory,PITF2775B5,CMS Part B
+490,22,Outpatient Hospital,PITF2775B5,Emdeon
+89,22,Outpatient Hospital,PITF2775B5,CMS Part B
+6,11,Office,PI0KXBK9C1,Emdeon
+1,12,Home,PITF2775B5,Emdeon
+37,11,Office,PITF2775B5,Wolters Kluwer Old
+1,49,Independent Clinic,PITF2775B5,CMS Part B
