@@ -1,0 +1,62 @@
+Job_Id:
+  JOB_ID:
+    req: REQUIRED
+    com: Project Job Id
+    val: ''
+Pri_Plus settings:
+  JOB_NAME:
+    req: REQUIRED
+    com: Name of your Pri Plus Job
+    val: cpDir_yyyy_m_d_Pri_Plus
+  VINTAGE:
+    req: REQUIRED
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd
+    val: dd/mm/yyyy
+  CLAIMS_DATABASE:
+    req: REQUIRED
+    com: standard or premium
+    val: standard
+  SETTINGS:
+    req: REQUIRED
+    com: settings to use for your Pri Plus Job
+    val: ''
+  REPORT_TYPE:
+    req: REQUIRED
+    com: Type(s) of report(s) you want to build, Distribution Report, Adjustment Code Analysis, or Both (dist|aca|both)
+    val: aca
+  DOS_WINDOW:
+    req: OPTIONAL
+    com: Custom vendor window for DOS. Should be of form 'yyyymmdd yyyymmdd' for start
+      and end date
+    val: ''
+Pri_Plus file location settings:
+  PROCEDURE_CODES_FILE:
+    req: REQUIRED
+    com: Location of your procedure code list
+    val: codes.tab
+  ADJUSTMENTS_FILE:
+    req: REQUIRED
+    com: Location of your adjustment reason code list
+    val: adjust.tab
+Oracle settings:
+  USERNAME:
+    req: REQUIRED
+    com: Username for the claims database. 99% of the time you should NOT change this
+    val: claims_aggr
+  PASSWORD:
+    req: OPTIONAL
+    com: Password for the claims database (if not production DB). 99% of the time
+      you should NOT change this
+    val: ''
+  INSTANCE:
+    req: REQUIRED
+    com: Instance for the claims database. 99% of the time you should NOT change this
+    val: pldwh2dbr
+  CFG_TYPE:
+    req: REQUIRED
+    com: What type of job this settings.cfg file is for. DO NOT CHANGE THIS
+    val: PRI_PLUS
+  CFG_FILE_VERSION:
+    req: REQUIRED
+    com: Version of CFG files' layout. 99% of the time you should NOT change this
+    val: '1.0'

@@ -1,0 +1,5 @@
+ADJ_CODE	DESCRIPTION
+1	Deductible Amount
+10	The diagnosis is inconsistent with the patient's gender. Usage: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.
+100	Payment made to patient/insured/responsible party.
+29	The time limit for filing has expired.

@@ -1,0 +1,100 @@
+Job_Id:
+  JOB_ID:
+    req: REQUIRED
+    com: Project Job Id
+    val: ''
+Pri_Jobs settings:
+  JOB_NAME:
+    req: REQUIRED
+    com: Name of your Pri Job
+    val: cpDir_yyyy_m_d_PRI
+  VINTAGE:
+    req: REQUIRED
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd
+    val: dd/mm/yyyy
+  CLAIMS_DATABASE:
+    req: REQUIRED
+    com: standard or premium
+    val: standard
+  SETTINGS:
+    req: REQUIRED
+    com: settings to use for your Pri Job
+    val: ''
+  DELIMITER:
+    req: REQUIRED
+    com: Delimiter to split output files on (\t , |)
+    val: \t
+  LOCK_PROF_ORDER:
+    req: OPTIONAL
+    com: Flag to force Prof Attributes default order. "Y" to enable, all other values
+      will default to no
+    val: Y
+  JOB_QUEUE:
+    req: REQUIRED
+    com: which job queue to push to. Talk with Emily Hofer if you need to push to
+      monthly queue
+    val: PRI
+  ADDITIONAL_EMAILS:
+    req: OPTIONAL
+    com: additional email addresses you want to send notifications to
+    val: ''
+  SWITCH_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for Switch data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+Pri_Code_Groups settings:
+  CODE_GROUPS_FILE:
+    req: REQUIRED
+    com: Location of Code Groups File
+    val: codeGroups.tab
+Pri_Code_Group_Rules settings:
+  CODE_GROUP_RULES_FILE:
+    req: REQUIRED
+    com: Location of Code Group Rules File
+    val: codeGroupRules.tab
+Pri_Code_Group_Members settings:
+  CODE_GROUP_MEMBERS_FILE:
+    req: REQUIRED
+    com: Location of Code Group Members file
+    val: codeGroupMembers.tab
+Pri_Output settings:
+  JOB_AGGR_LEVELS_FILE:
+    req: REQUIRED
+    com: Location of Job Aggr Levels file
+    val: jobAggrLevels.tab
+  JOB_PROF_ATTRIBUTES_FILE:
+    req: REQUIRED
+    com: Location of Job Profile Attributes file
+    val: jobProfAttributes.tab
+  JOB_REPORT_ATTRIBUTES_FILE:
+    req: REQUIRED
+    com: Location of Job Report Attributes file
+    val: jobReportAttributes.tab
+Oracle settings:
+  USERNAME:
+    req: REQUIRED
+    com: Username for the claims database. 99% of the time you should NOT change this
+    val: claims_aggr
+  PASSWORD:
+    req: OPTIONAL
+    com: Password for the claims database (if not production DB). 99% of the time
+      you should NOT change this
+    val: ''
+  INSTANCE:
+    req: REQUIRED
+    com: Instance for the claims database. 99% of the time you should NOT change this
+    val: pldwh2dbr
+  AGGREGATION_TABLE:
+    req: REQUIRED
+    com: Aggregation Table for the Aggregation process. 99% of the time you should
+      NOT change this
+    val: claims_aggr.pri_aggregations
+  CFG_TYPE:
+    req: REQUIRED
+    com: What type of job this settings.cfg file is for. DO NOT CHANGE THIS
+    val: PRI
+  CFG_FILE_VERSION:
+    req: REQUIRED
+    com: Version of CFG files' layout. 99% of the time you should NOT change this
+    val: '1.4'
