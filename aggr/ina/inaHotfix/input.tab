@@ -1,0 +1,9 @@
+INA_DIR	NETWORKS	QTRS_TO_DAYS	DIRECTIONALITY	DX_COHORT	COHORT_DX	PX_COHORT	COHORT_PX
+GLOBAL		Y	Y	Y		Y	
+inaInvest	dxCohort,dxCohortDir	Y			Y		Y
+inaInvest	pxCohort,pxCohortDir	Y	Y		Y	
+inatest_dir_link							
+/vol/cs/clientprojects/ssiu/hotfixIna/subDirCheck/inatest_dir_link							
+/vol/cs/clientprojects/ssiu/hotfixIna/subDirCheck2/inatest_dir_link							
+pcaTest		Y	Y	Y		Y	
+filterConfigTest		Y	Y	Y		Y	

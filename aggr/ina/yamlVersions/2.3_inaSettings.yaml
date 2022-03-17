@@ -1,0 +1,122 @@
+Job_Id:
+  JOB_ID:
+    req: REQUIRED
+    com: Project Job Id
+    val: ''
+Ina_Jobs settings:
+  JOB_NAME:
+    req: REQUIRED
+    com: Name of your INA Job
+    val: cpDir_yyyy_m_d_INA
+  VINTAGE:
+    req: REQUIRED
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd
+    val: dd/mm/yyyy
+  LOWER_CLAIM_DATE:
+    req: OPTIONAL
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd (For Switch Data)
+    val: ''
+  UPPER_CLAIM_DATE:
+    req: OPTIONAL
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd (For Switch Data)
+    val: ''
+Ina_Network_Config settings:
+  NETWORK_CONFIG_FILE:
+    req: REQUIRED
+    com: Location of Network Config File
+    val: networkConfigSettings.tab
+Ina_Claim_Settings settings:
+  CLAIM_SETTINGS_FILE:
+    req: REQUIRED
+    com: Location of Claim Settings file
+    val: claimSettings.tab
+Ina_Code_Groups settings:
+  CODE_GROUPS_FILE:
+    req: REQUIRED
+    com: Location of Code Groups file
+    val: codeGroups.tab
+Ina_Code_Grp_Membrs settings:
+  CODE_GRP_MEMBRS_FILE:
+    req: REQUIRED
+    com: Location of Code Grp Membrs file
+    val: codeGrpMembrs.tab
+SAS settings:
+  DENOM:
+    req: REQUIRED
+    com: Value for Denom option
+    val: '10'
+  SOR:
+    req: REQUIRED
+    com: Value for Strength of Relationship (SOR)
+    val: '10'
+  ADD_SHARED_PAT_COUNTS:
+    req: REQUIRED
+    com: flag to add shared patient counts (Yes|No)
+    val: 'No'
+  ADD_DENOM_PATIENT_COUNTS:
+    req: REQUIRED
+    com: flag to add denom patient counts (Yes|No)
+    val: 'No'
+  MIN_SHARED_PTNTS:
+    req: REQUIRED
+    com: minimum number of patients a connection must share (Default is 2)
+    val: '2'
+  JOB_QUEUE:
+    req: REQUIRED
+    com: which job queue to push to. Talk with Emily Hofer if you need to push to
+      monthly queue
+    val: INA
+  INCLUDE_REPORTS:
+    req: REQUIRED
+    com: flag to run reports (Yes|No)
+    val: 'No'
+  INCLUDE_PAYER_TYPE_BREAK:
+    req: REQUIRED
+    com: flag to include aggregations by payer (Yes|No)
+    val: 'No'
+  ADDITIONAL_EMAILS:
+    req: OPTIONAL
+    com: additional email addresses you want to send notifications to
+    val: ''
+  USE_HPCC:
+    req: OPTIONAL
+    com: flag to run aggregations in HPCC. "Y" to enable, all other values will default
+      to no
+    val: Y
+  KEEP_TRIPLETS:
+    req: OPTIONAL
+    com: flag to keep aggregation triplets. "Y" to enable, all other values will default
+      to no
+    val: ''
+  CMS_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for CMS data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+  SWITCH_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for Switch data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+  STATE_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for State data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+  SKIP_WINSIZE_CHECK:
+    req: OPTIONAL
+    com: For overriding the check that vendor windows meet or exceed 1 year. "Y" to
+      enable, all other values will default to no
+    val: ''
+  INSTANCE:
+    req: REQUIRED
+    com: Instance for the claims database. 99% of the time you should NOT change this
+    val: pldwh2dbr
+  CFG_TYPE:
+    req: REQUIRED
+    com: What type of job this settings.cfg file is for. DO NOT CHANGE THIS
+    val: INA
+  CFG_FILE_VERSION:
+    req: REQUIRED
+    com: Version of CFG files' layout. 99% of the time you should NOT change this
+    val: '2.3'
