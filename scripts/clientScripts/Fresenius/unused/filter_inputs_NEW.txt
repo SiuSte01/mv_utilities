@@ -1,0 +1,51 @@
+#input parameters for filtering code			
+			
+#Strength of Relationship Mapping			
+#Every strength value in linkssummary.txt (first column) needs to have a label			
+#StrengthMap	Strength	Label	
+StrengthMap	0	1	
+StrengthMap	1	2	
+StrengthMap	2	3	
+StrengthMap	3	4	
+StrengthMap	4	5	
+StrengthMap	5	6	
+StrengthMap	6	7	
+StrengthMap	7	8	
+StrengthMap	8	9	
+StrengthMap	9	10	
+			
+#Filtering/decile replacement file			
+#PxFilter info will be ignored for Dx-only network			
+#For Dx->Px network  can specify both files   or one can be blank			
+#if dxfilter is not needed - but dxuniverse is needed below - specify			
+#  the dxuniverse column names here			
+#Filetype	Filename - full path	Decile Col Name - can be blank if no need to replace decile	Count Col Name - can be blank
+#at least one person in each link must be in this list for link to be included
+Grp1Filter	
+Grp2Filter	REPLACE_PATH_TO_PIID
+			
+#Universe of PIIDs file - if we want to restrict PIIDs in the network to be from some universe			
+#leave filename blank if universe restriction not required			
+"#must specify a Dx and a Px universe, with counts if merging to PxDx"			
+#assumes the counts and decile column names are same as in the filter files			
+#no need to respecify			
+#Filetype	Filename - full path		
+#both piids in a link need to be in this list for link to be included
+Grp1Univ	
+Grp2Univ	REPLACE_PATH_TO_PIID
+			
+#PxDx affiliations tab files - if we wan to filter them to the list of piids in network.txt			
+PxDxAffils_Grp2	
+
+#second tab file - if we want to filter it to the list of second ids in the filtered pxdx
+PxDxSecondFile_Grp2	
+
+#PxDx affiliations tab files - if we wan to filter them to the list of piids in network.txt			
+PxDxAffils_Grp1	
+
+#second tab file - if we want to filter it to the list of second ids in the filtered pxdx
+PxDxSecondFile_Grp1	
+
+
+Relational	N
+AddCounts	N		
