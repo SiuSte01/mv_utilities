@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Legacy world map</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for world.legacy {maps}"><tr><td>world.legacy {maps}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Legacy world map</h2>
+
+<h3>Description</h3>
+
+<p>A function to switch the &quot;world&quot; map to the old (1990) version and back.</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+world.legacy(wl=FALSE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>wl</code></td>
+<td>
+<p>Set to TRUE to switch to the old world map. Set FALSE to switch back to the new map. In either case, the old legacy map can always be reached as <code>legacy_world</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function switches the &quot;world&quot; database to the old (1990) version. It is provided temporarily for cases where the new updated world map causes problems. In this way, code may run unchanged and still use the legacy world data base. It is highly recommended, though, to use this possibility only as a last resource. Addressing <code>legacy_world</code> directly or updating code to use the new data base is th erecommended option.
+</p>
+<p>The new version is updated to about 2013, so has many new countries that did not exist in 1990 (e.g. in Central and Eastern Europe).
+</p>
+<p>This function may be removed from the <code>maps</code> package in future releases. The legacy world database is also available directly as <code>legacy_world</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="map.html">map</a></code>,<code><a href="world.html">world</a></code>,<code><a href="legacy_world.html">legacy_world</a></code></p>
+
+<hr><div align="center">[Package <em>maps</em> version 3.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

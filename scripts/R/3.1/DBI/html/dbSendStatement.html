@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Execute a data manipulation statement on a given database...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for dbSendStatement {DBI}"><tr><td>dbSendStatement {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Execute a data manipulation statement on a given database connection</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>dbSendStatement</code> only submits and synchronously executes the
+SQL data manipulation statement (e.g., <code>UPDATE</code>, <code>DELETE</code>,
+<code>INSERT INTO</code>, <code>DROP TABLE</code>, ...) to the database engine.  To query
+the number of affected rows, call <code><a href="dbGetRowsAffected.html">dbGetRowsAffected</a></code> on the
+returned result object.  You must also call <code><a href="dbClearResult.html">dbClearResult</a></code> after
+that. For interactive use, you should almost always prefer
+<code><a href="dbExecute.html">dbExecute</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+dbSendStatement(conn, statement, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>conn</code></td>
+<td>
+<p>A <code><a href="DBIConnection-class.html">DBIConnection</a></code> object, as produced by
+<code><a href="dbConnect.html">dbConnect</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>statement</code></td>
+<td>
+<p>a character vector of length 1 containing SQL.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Other parameters passed on to methods.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code><a href="dbSendStatement.html">dbSendStatement</a></code> comes with a default implementation that simply
+forwards to <code><a href="dbSendQuery.html">dbSendQuery</a></code>, to support backends that only
+implement the latter.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object that inherits from <code><a href="DBIResult-class.html">DBIResult</a></code>.
+Once you have finished using a result, make sure to disconnect it
+with <code><a href="dbClearResult.html">dbClearResult</a></code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>For queries: <code><a href="dbSendQuery.html">dbSendQuery</a></code> and <code><a href="dbGetQuery.html">dbGetQuery</a></code>.
+</p>
+<p>Other DBIConnection generics: <code><a href="DBIConnection-class.html">DBIConnection-class</a></code>,
+<code><a href="dbDataType.html">dbDataType</a></code>, <code><a href="dbDisconnect.html">dbDisconnect</a></code>,
+<code><a href="dbExecute.html">dbExecute</a></code>, <code><a href="dbExistsTable.html">dbExistsTable</a></code>,
+<code><a href="dbGetException.html">dbGetException</a></code>, <code><a href="dbGetInfo.html">dbGetInfo</a></code>,
+<code><a href="dbGetQuery.html">dbGetQuery</a></code>, <code><a href="dbIsValid.html">dbIsValid</a></code>,
+<code><a href="dbListFields.html">dbListFields</a></code>, <code><a href="dbListResults.html">dbListResults</a></code>,
+<code><a href="dbListTables.html">dbListTables</a></code>, <code><a href="dbReadTable.html">dbReadTable</a></code>,
+<code><a href="dbRemoveTable.html">dbRemoveTable</a></code>, <code><a href="dbSendQuery.html">dbSendQuery</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+con &lt;- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbWriteTable(con, "cars", head(cars, 3))
+rs &lt;- dbSendStatement(con,
+  "INSERT INTO cars (speed, dist) VALUES (1, 1), (2, 2), (3, 3);")
+dbHasCompleted(rs)
+dbGetRowsAffected(rs)
+dbClearResult(rs)
+dbReadTable(con, "cars")   # there are now 6 rows
+
+dbDisconnect(con)
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>

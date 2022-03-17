@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Pacific Centric Low resolution World Map</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for world2 {maps}"><tr><td>world2 {maps}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>
+Pacific Centric Low resolution World Map
+</h2>
+
+<h3>Description</h3>
+
+<p>This is an alternative version of the <code>world</code> database 
+based on latitudes [0, 360), which then has the Pacific
+Ocean in the centre of the map.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>data(world2MapEnv)</pre>
+
+
+<h3>Format</h3>
+
+<p>The data file is merely a character string which
+specifies the name of an environment variable which contains the
+base location of the binary files used by the map drawing functions.
+This environment variable (<code>R_MAP_DATA_DIR_WORLD</code> for the datasets in the
+maps package) is set at package load time <EM>if it does not
+already exist</EM>.  Hence setting the environment variable before loading
+the package can override the default location of the binary datasets.
+</p>
+<p>During a transition period (<code>maps</code> version 3.0&ndash;1) it is possible to switch to the old legacy map using the function <code>world.legacy(TRUE)</code> or by setting the setting the environment variable R_MAP_DATA_LEGACY=TRUE prior to loading the package.
+</p>
+
+
+<h3>NOTE</h3>
+
+<p>Almost the same effect can in fact be obtained by using a projection:
+</p>
+<p>map(&quot;world&quot;,projection=&quot;rectangular&quot;,parameter=0,orientation=c(90,0,180),
+wrap=TRUE)
+</p>
+<p>By changing the third component of 'orientation', the longitude shift can also be set to any other value besides 180 or 0 (but then fill=TRUE will usually give artefacts at the borders). You may even need to set 'resolution=0' if the wrapping algorithm fails because of the thinning.
+</p>
+<p>This projected version will not work so well with <code>fill=TRUE</code>, though. There may be jagged edges at the boundaries.
+</p>
+
+
+<h3>Source</h3>
+
+<p>The Natural Earth data set is available from <a href="http://www.naturalearthdata.com">http://www.naturalearthdata.com</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Richard A. Becker, and Allan R. Wilks,
+&quot;Maps in S&quot;,
+<EM>AT\&amp;T Bell Laboratories Statistics Research Report [93.2], 1993.</EM>
+</p>
+<p>Richard A. Becker, and Allan R. Wilks,
+&quot;Constructing a Geographical Database&quot;,
+<EM>AT\&amp;T Bell Laboratories Statistics Research Report [95.2], 1995.</EM>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="map.html">map</a></code>, <code><a href="world.html">world</a></code>,<code><a href="legacy_world.html">legacy_world2</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+map('world2', xlim = c(100, 300))
+map.axes()
+</pre>
+
+<hr><div align="center">[Package <em>maps</em> version 3.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Make R/S-Plus identifiers into legal SQL identifiers</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for make.db.names,SQLiteConnection,character-method {RSQLite}"><tr><td>make.db.names,SQLiteConnection,character-method {RSQLite}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Make R/S-Plus identifiers into legal SQL identifiers</h2>
+
+<h3>Description</h3>
+
+<p>These methods are straight-forward implementations of the corresponding
+generic functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S4 method for signature 'SQLiteConnection,character'
+make.db.names(dbObj, snames,
+  keywords = .SQL92Keywords, unique = TRUE, allow.keywords = TRUE, ...)
+
+## S4 method for signature 'SQLiteConnection'
+SQLKeywords(dbObj, ...)
+
+## S4 method for signature 'SQLiteConnection,character'
+isSQLKeyword(dbObj, name,
+  keywords = .SQL92Keywords, case = c("lower", "upper", "any")[3], ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>dbObj</code></td>
+<td>
+<p>any SQLite object (e.g., <code>SQLiteDriver</code>).</p>
+</td></tr>
+<tr valign="top"><td><code>snames</code></td>
+<td>
+<p>a character vector of R identifiers (symbols) from which to
+make SQL identifiers.</p>
+</td></tr>
+<tr valign="top"><td><code>keywords</code></td>
+<td>
+<p>a character vector with SQL keywords, namely
+<code>.SQL92Keywords</code> defined in the <code>DBI</code> package.</p>
+</td></tr>
+<tr valign="top"><td><code>unique</code></td>
+<td>
+<p>logical describing whether the resulting set of SQL names
+should be unique.  The default is <code>TRUE</code>. Following the SQL 92
+standard, uniqueness of SQL identifiers is determined regardless of whether
+letters are upper or lower case.</p>
+</td></tr>
+<tr valign="top"><td><code>allow.keywords</code></td>
+<td>
+<p>logical describing whether SQL keywords should be
+allowed in the resulting set of SQL names.  The default is <code>TRUE</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Not used. Included for compatiblity with generic.</p>
+</td></tr>
+<tr valign="top"><td><code>name</code></td>
+<td>
+<p>a character vector of SQL identifiers we want to check against
+keywords from the DBMS.</p>
+</td></tr>
+<tr valign="top"><td><code>case</code></td>
+<td>
+<p>a character string specifying whether to make the comparison
+as lower case, upper case, or any of the two.  it defaults to <code>"any"</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Not run: 
+# This example shows how we could export a bunch of data.frames
+# into tables on a remote database.
+
+con &lt;- dbConnect("SQLite", dbname = "sqlite.db")
+
+export &lt;- c("trantime.email", "trantime.print", "round.trip.time.email")
+tabs &lt;- make.db.names(con, export, unique = TRUE, allow.keywords = TRUE)
+
+for(i in seq_along(export) )
+   dbWriteTable(con, name = tabs[i],  get(export[i]))
+
+## End(Not run)
+</pre>
+
+<hr><div align="center">[Package <em>RSQLite</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

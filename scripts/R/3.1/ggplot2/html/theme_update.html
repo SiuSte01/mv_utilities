@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Get, set and update themes.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for theme_update {ggplot2}"><tr><td>theme_update {ggplot2}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Get, set and update themes.</h2>
+
+<h3>Description</h3>
+
+<p>Use <code>theme_get</code> to get the current theme, and <code>theme_set</code> to
+completely override it. <code>theme_update</code> and <code>theme_replace</code> are
+shorthands for changing individual elements in the current theme.
+<code>theme_update</code> uses the <code>+</code> operator, so that any unspecified
+values in the theme element will default to the values they are set in the
+theme. <code>theme_replace</code> will completely replace the element, so any
+unspecified values will overwrite the current value in the theme with <code>NULL</code>s.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+theme_update(...)
+
+theme_replace(...)
+
+theme_get()
+
+theme_set(new)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>named list of theme settings</p>
+</td></tr>
+<tr valign="top"><td><code>new</code></td>
+<td>
+<p>new theme (a list of theme elements)</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="gg-add.html">%+replace%</a></code> and <code><a href="gg-add.html">+.gg</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+p &lt;- ggplot(mtcars, aes(mpg, wt)) +
+  geom_point()
+p
+old &lt;- theme_set(theme_bw())
+p
+theme_set(old)
+p
+
+#theme_replace NULLs out the fill attribute of panel.background,
+#resulting in a white background:
+theme_get()$panel.background
+old &lt;- theme_replace(panel.background = element_rect(colour = "pink"))
+theme_get()$panel.background
+p
+theme_set(old)
+
+#theme_update only changes the colour attribute, leaving the others intact:
+old &lt;- theme_update(panel.background = element_rect(colour = "pink"))
+theme_get()$panel.background
+p
+theme_set(old)
+
+theme_get()
+
+
+ggplot(mtcars, aes(mpg, wt)) +
+  geom_point(aes(color = mpg)) +
+  theme(legend.position = c(0.95, 0.95),
+        legend.justification = c(1, 1))
+last_plot() +
+ theme(legend.background = element_rect(fill = "white", colour = "white", size = 3))
+
+</pre>
+
+<hr><div align="center">[Package <em>ggplot2</em> version 2.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

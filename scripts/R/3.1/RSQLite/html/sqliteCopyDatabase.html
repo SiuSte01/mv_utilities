@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Copy a SQLite database</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for sqliteCopyDatabase {RSQLite}"><tr><td>sqliteCopyDatabase {RSQLite}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Copy a SQLite database</h2>
+
+<h3>Description</h3>
+
+<p>This function copies a database connection to a file or to another database
+connection.  It can be used to save an in-memory database (created using
+<code>dbname = ":memory:"</code>) to a file or to create an in-memory database as
+a copy of anothe database.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+sqliteCopyDatabase(from, to)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>from</code></td>
+<td>
+<p>A <code>SQLiteConnection</code> object.  The main database in
+<code>from</code> will be copied to <code>to</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>to</code></td>
+<td>
+<p>Either a string specifying the file name where the copy will be
+written or a <code>SQLiteConnection</code> object pointing to an empty database.
+If <code>to</code> specifies an already existing file, it will be overwritten
+without a warning.  When <code>to</code> is a database connection, it is assumed
+to point to an empty and unused database; the behavior is undefined
+otherwise.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function uses SQLite's experimental online backup API to make the copy.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns <code>NULL</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Seth Falcon
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="http://www.sqlite.org/backup.html">http://www.sqlite.org/backup.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Create an in memory database
+db &lt;- dbConnect(SQLite(), dbname = ":memory:")
+df &lt;- data.frame(letters=letters[1:4], numbers=1:4, stringsAsFactors = FALSE)
+ok &lt;- dbWriteTable(db, "table1", df, row.names = FALSE)
+stopifnot(ok)
+
+## Copy the contents of the in memory database to
+## the specified file
+backupDbFile &lt;- tempfile()
+sqliteCopyDatabase(db, backupDbFile)
+diskdb &lt;- dbConnect(SQLite(), dbname = backupDbFile)
+stopifnot(identical(df, dbReadTable(diskdb, "table1")))
+
+## Copy from one connection to another
+db2 &lt;- dbConnect(SQLite(), dbname = ":memory:")
+sqliteCopyDatabase(db, db2)
+stopifnot(identical(df, dbReadTable(db2, "table1")))
+
+## cleanup
+dbDisconnect(db)
+dbDisconnect(diskdb)
+dbDisconnect(db2)
+unlink(backupDbFile)
+</pre>
+
+<hr><div align="center">[Package <em>RSQLite</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

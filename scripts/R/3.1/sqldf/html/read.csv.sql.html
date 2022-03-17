@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Read File Filtered by SQL</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for read.csv.sql {sqldf}"><tr><td>read.csv.sql {sqldf}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>
+Read File Filtered by SQL
+</h2>
+
+<h3>Description</h3>
+
+<p>Read a file into R filtering it with an sql statement.  Only the filtered
+portion is processed by R so that files larger than R can otherwise
+handle can be accommodated.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", 
+row.names, eol, skip, filter, nrows, field.types, 
+colClasses, dbname = tempfile(), drv = "SQLite", ...)
+read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", 
+row.names, eol, skip, filter, nrows, field.types,
+colClasses, dbname = tempfile(), drv = "SQLite", ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>file</code></td>
+<td>
+
+<p>A file path or a URL (beginning with <code>http://</code> or <code>ftp://</code>). If
+the <code>filter</code> argument is used and no file is to be input to the filter
+then <code>file</code> can be omitted, <code>NULL</code>, <code>NA</code> or <code>""</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>sql</code></td>
+<td>
+
+<p>character string holding an SQL statement.  The table representing the
+file should be referred to as <code>file</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>header</code></td>
+<td>
+
+<p>As in <code>read.csv</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>sep</code></td>
+<td>
+
+<p>As in <code>read.csv</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>row.names</code></td>
+<td>
+
+<p>As in <code>read.csv</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>eol</code></td>
+<td>
+
+<p>Character which ends line.
+</p>
+</td></tr>
+<tr valign="top"><td><code>skip</code></td>
+<td>
+
+<p>Skip indicated number of lines in input file.
+</p>
+</td></tr>
+<tr valign="top"><td><code>filter</code></td>
+<td>
+
+<p>If specified, this should be a shell/batch command that the input file is piped through.  For <code>read.csv2.sql</code> it is by default the following on non-Windows systems: <code>tr , .</code>.  This translates all commas in the file to dots. On Windows similar functionalty is provided but to do that using a vbscript file that is included with <code>sqldf</code> to emulate the <code>tr</code> command.  
+</p>
+</td></tr>
+<tr valign="top"><td><code>nrows</code></td>
+<td>
+
+<p>Number of rows used to determine column types.  It defaults to 50.  Using 
+<code>-1</code> causes it to use all rows for determining column types.
+This argument is rarely needed.
+</p>
+</td></tr>
+<tr valign="top"><td><code>field.types</code></td>
+<td>
+
+<p>A list whose names are the column names and whose
+contents are the SQLite types (not the R class names) of the
+columns.  Specifying these types improves how fast it takes.
+Unless speed is very important this argument is not normally used.
+</p>
+</td></tr>
+<tr valign="top"><td><code>colClasses</code></td>
+<td>
+<p>As in <code>read.csv</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>dbname</code></td>
+<td>
+
+<p>As in <code>sqldf</code> except that the default is <code>tempfile()</code>.
+Specifying <code>NULL</code> will put the database in memory which may improve speed
+but will limit the size of the database by the available memory.
+</p>
+</td></tr>
+<tr valign="top"><td><code>drv</code></td>
+<td>
+
+<p>This argument is ignored. 
+Currently the only database SQLite supported by <code>read.csv.sql</code> and 
+<code>read.csv2.sql</code> is SQLite.  
+Note that the H2 database has a builtin SQL function,
+<code>CSVREAD</code>, which can be used in place of <code>read.csv.sql</code>.
+</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+
+<p>Passed to <code>sqldf</code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Reads the indicated file into an sql database creating the database
+if it does not already exist.  Then it applies the sql statement
+returning the result as a data frame.  If the database did not exist
+prior to this statement it is removed.  
+</p>
+<p>Note that it uses facilities of <code>SQLite</code> to read the file 
+which are intended for speed and therefore
+not as flexible as in R.  For example, it does not
+recognize quoted fields as special but will regard the quotes as 
+part of the field. See the
+<code>sqldf</code> help for more information.
+</p>
+<p><code>read.csv2.sql</code> is like <code>read.csv.sql</code> except
+the default <code>sep</code> is <code>";"</code> and the default <code>filter</code> translates
+all commas in the file to decimal points (i.e. to dots).
+</p>
+<p>On Windows, if the <code>filter</code> argument is used and if Rtools is detected
+in the registry then the Rtools bin directory is added to the search path
+facilitating use of those tools without explicitly setting any the path.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If the sql statement is a select statement then a data frame
+is returned.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Not run: 
+# might need to specify eol= too depending on your system
+write.csv(iris, "iris.csv", quote = FALSE, row.names = FALSE)
+iris2 &lt;- read.csv.sql("iris.csv", 
+	sql = "select * from file where Species = 'setosa' ")
+
+
+## End(Not run)
+</pre>
+
+<hr><div align="center">[Package <em>sqldf</em> version 0.4-10 <a href="00Index.html">Index</a>]</div>
+</body></html>

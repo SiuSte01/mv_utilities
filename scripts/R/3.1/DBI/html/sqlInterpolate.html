@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Safely interpolate values into an SQL string</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for sqlInterpolate {DBI}"><tr><td>sqlInterpolate {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Safely interpolate values into an SQL string</h2>
+
+<h3>Description</h3>
+
+<p>Safely interpolate values into an SQL string
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+sqlInterpolate(`_con`, `_sql`, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>_con</code></td>
+<td>
+<p>A database connection.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Named values to interpolate into string. All strings
+will be first escaped with <code><a href="SQL.html">dbQuoteString</a></code> prior
+to interpolation to protect against SQL injection attacks.</p>
+</td></tr>
+<tr valign="top"><td><code>'_sql'</code></td>
+<td>
+<p>A SQL string containing containing variables to interpolate.
+Variables must start with a question mark and can be any valid R
+identifier, i.e. it must start with a letter or <code>.</code>, and be followed
+by a letter, digit, <code>.</code> or <code>_</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Backend authors</h3>
+
+<p>If you are implementing a SQL backend with non-ANSI quoting rules, you'll
+need to implement a method for <code><a href="sqlParseVariables.html">sqlParseVariables</a></code>. Failure to
+do so does not expose you to SQL injection attacks, but will (rarely) result
+in errors matching supplied and interpolated variables.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+sql &lt;- "SELECT * FROM X WHERE name = ?name"
+sqlInterpolate(ANSI(), sql, name = "Hadley")
+
+# This is safe because the single quote has been double escaped
+sqlInterpolate(ANSI(), sql, name = "H'); DROP TABLE--;")
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>

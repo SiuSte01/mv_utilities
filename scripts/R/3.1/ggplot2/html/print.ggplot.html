@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Draw plot on current graphics device.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for print.ggplot {ggplot2}"><tr><td>print.ggplot {ggplot2}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Draw plot on current graphics device.</h2>
+
+<h3>Description</h3>
+
+<p>Draw plot on current graphics device.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'ggplot'
+print(x, newpage = is.null(vp), vp = NULL, ...)
+
+## S3 method for class 'ggplot'
+plot(x, newpage = is.null(vp), vp = NULL, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>plot to display</p>
+</td></tr>
+<tr valign="top"><td><code>newpage</code></td>
+<td>
+<p>draw new (empty) page first?</p>
+</td></tr>
+<tr valign="top"><td><code>vp</code></td>
+<td>
+<p>viewport to draw plot in</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>other arguments not used by this method</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Invisibly returns the result of <code><a href="ggplot_build.html">ggplot_build</a></code>, which
+is a list with components that contain the plot itself, the data,
+information about the scales, panels etc.
+</p>
+
+<hr><div align="center">[Package <em>ggplot2</em> version 2.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

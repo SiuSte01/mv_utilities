@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Generic extended version of R match.fun</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for match.funfn {gsubfn}"><tr><td>match.funfn {gsubfn}</td><td align="right">R Documentation</td></tr></table>
+
+<h2> Generic extended version of R match.fun </h2>
+
+<h3>Description</h3>
+
+<p>A generic <code>match.fun</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+match.funfn(FUN, descend = TRUE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>FUN</code></td>
+<td>
+<p> Function, character name of function or formula describing 
+function. </p>
+</td></tr>
+<tr valign="top"><td><code>descend</code></td>
+<td>
+<p>logical; control whether to search past non-function objects.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The default method is the same as <code>match.fun</code> and the <code>formula</code>
+method is the same as <code>as.function.formula</code>.  This function can
+be used within the body of a function to convert a function specification
+whether its a function, character string or formula into an actual function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a function.
+</p>
+
+
+<h3>See Also</h3>
+
+<p> See Also <code><a href="../../base/html/match.fun.html">match.fun</a></code>, 
+<code><a href="as.function.formula.html">as.function.formula</a></code>.</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# return first argument evaluated at second argument squared.
+sq &lt;- function(f, x) {
+   f &lt;- match.funfn(f)
+   f(x^2)
+}
+
+# call sq using different forms for function
+sq(function(x) exp(x)/x, pi)
+f &lt;- function(x) exp(x)/x
+sq("f", pi)
+sq(~ exp(x)/x, pi)
+sq(x ~ exp(x)/x, pi)
+
+</pre>
+
+<hr><div align="center">[Package <em>gsubfn</em> version 0.6-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Keep strings matching a pattern.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for str_subset {stringr}"><tr><td>str_subset {stringr}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Keep strings matching a pattern.</h2>
+
+<h3>Description</h3>
+
+<p>This is a convenient wrapper around <code>x[str_detect(x, pattern)]</code>.
+Vectorised over <code>string</code> and <code>pattern</code>
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+str_subset(string, pattern)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>string</code></td>
+<td>
+<p>Input vector. Either a character vector, or something
+coercible to one.</p>
+</td></tr>
+<tr valign="top"><td><code>pattern</code></td>
+<td>
+<p>Pattern to look for.
+</p>
+<p>The default interpretation is a regular expression, as described
+in <a href="../../stringi/html/stringi-search-regex.html">stringi-search-regex</a>. Control options with
+<code><a href="modifiers.html">regex</a>()</code>.
+</p>
+<p>Match a fixed string (i.e. by comparing only bytes), using
+<code><a href="modifiers.html">fixed</a>(x)</code>. This is fast, but approximate. Generally,
+for matching human text, you'll want <code><a href="modifiers.html">coll</a>(x)</code> which
+respects character matching rules for the specified locale.
+</p>
+<p>Match character, word, line and sentence boundaries with
+<code><a href="modifiers.html">boundary</a>()</code>. An empty pattern, &quot;&quot;, is equivalent to
+<code>boundary("character")</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character vector.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../base/html/grep.html">grep</a></code> with argument <code>value = TRUE</code>,
+<code><a href="../../stringi/html/stri_subset.html">stri_subset</a></code> for the underlying implementation.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+fruit &lt;- c("apple", "banana", "pear", "pinapple")
+str_subset(fruit, "a")
+str_subset(fruit, "^a")
+str_subset(fruit, "a$")
+str_subset(fruit, "b")
+str_subset(fruit, "[aeiou]")
+
+# Missings are silently dropped
+str_subset(c("a", NA, "b"), ".")
+</pre>
+
+<hr><div align="center">[Package <em>stringr</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

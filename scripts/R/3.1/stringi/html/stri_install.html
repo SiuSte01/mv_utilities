@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Installation-Related Utilities [DEPRECATED]</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for stri_install_check {stringi}"><tr><td>stri_install_check {stringi}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Installation-Related Utilities [DEPRECATED]</h2>
+
+<h3>Description</h3>
+
+<p>These functions are responsible for checking and guaranteeing
+that the ICU data library (icudt) is available and that <span class="pkg">stringi</span>
+is ready to use.
+</p>
+<p>These functions are deprecated and will no longer be available
+in future <span class="pkg">stringi</span> releases.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+stri_install_check(silent = FALSE)
+
+stri_install_icudt(check = TRUE, outpath = NULL, inpath = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>silent</code></td>
+<td>
+<p>suppress diagnostic messages</p>
+</td></tr>
+<tr valign="top"><td><code>check</code></td>
+<td>
+<p>enable <code>stri_install_check()</code> tests</p>
+</td></tr>
+<tr valign="top"><td><code>outpath</code></td>
+<td>
+<p>path to install icudt to. If <code>NULL</code>, then
+<code>file.path(path.package("stringi"), "libs")</code> will be used.</p>
+</td></tr>
+<tr valign="top"><td><code>inpath</code></td>
+<td>
+<p>path to search icudt archive in.
+If <code>NULL</code>, then only stringi mirror servers will be used.
+Mainly of interest to system admins and software developers.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>ICU makes use of a wide variety of data tables to provide many
+of its services. Examples include converter mapping tables,
+collation rules, transliteration rules, break iterator rules
+and dictionaries, and other locale data.
+</p>
+<p>Without the ICU data library (icudt) many <span class="pkg">stringi</span> features
+will not be available. icudt size is approx. 10-30 MB.
+</p>
+<p><code>stri_install_check()</code> tests whether some ICU services
+are available. If they are not, it is most likely due to
+unavailable ICU data library.
+</p>
+<p><code>stri_install_icudt()</code> downloads and installs the ICU data library
+specific for your platform (little/big-endian). The downloaded
+file will be decompressed into the directory where the package has been
+installed, see <code><a href="../../base/html/find.package.html">find.package</a></code>, so make sure
+you have sufficient write permissions.
+</p>
+
+
+<h3>Value</h3>
+
+<p>These functions return a logical value, invisibly.
+<code>TRUE</code> denotes that the requested operation has been completed
+successfully.
+</p>
+
+
+<h3>References</h3>
+
+<p><EM>ICU Data</EM> &ndash; ICU User Guide,
+<a href="http://userguide.icu-project.org/icudata">http://userguide.icu-project.org/icudata</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+stri_install_check()
+</pre>
+
+<hr><div align="center">[Package <em>stringi</em> version 1.0-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

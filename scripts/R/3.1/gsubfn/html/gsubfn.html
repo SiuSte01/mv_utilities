@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Pattern Matching and Replacement</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for gsubfn {gsubfn}"><tr><td>gsubfn {gsubfn}</td><td align="right">R Documentation</td></tr></table>
+
+<h2> Pattern Matching and Replacement </h2>
+
+<h3>Description</h3>
+
+<p>Like <code>gsub</code> except instead of a replacement string one
+uses a function which accepts the matched text as input and emits
+replacement text for it.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+gsubfn(pattern, replacement, x, backref, USE.NAMES = FALSE, 
+	ignore.case = FALSE, engine = getOption("gsubfn.engine"),
+	env = parent.frame(), ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>pattern</code></td>
+<td>
+<p> Same as <code>pattern</code> in <code>gsub</code> </p>
+</td></tr>
+<tr valign="top"><td><code>replacement</code></td>
+<td>
+<p> A character string, function, list, formula or proto object.  See Details. </p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p> Same as <code>x</code> in <code>gsub</code> </p>
+</td></tr>
+<tr valign="top"><td><code>backref</code></td>
+<td>
+<p> Number of backreferences to be passed to function.
+If zero or positive the match is passed as the first argument to the replacement
+function followed by the indicated number of backreferences as subsequent 
+arguments. If negative then
+only the that number of backreferences are passed but the match itself is not.
+If omitted it will be determined automatically, i.e. it will be 0 if there
+are no backreferences and otherwise it will equal negative the number of
+back references.  It determines this by counting the number of non-escaped
+left parentheses in the pattern. Also if the function contains an ampersand
+as an argument then <code>backref</code> will be taken as non-negative and the
+ampersand argument will get the full match.</p>
+</td></tr>
+<tr valign="top"><td><code>USE.NAMES</code></td>
+<td>
+<p> See <code>USE.NAMES</code> in <code>sapply</code>. </p>
+</td></tr>
+<tr valign="top"><td><code>ignore.case</code></td>
+<td>
+<p>If <code>TRUE</code> then case is ignored in the <code>pattern</code>
+argument.</p>
+</td></tr>
+<tr valign="top"><td><code>engine</code></td>
+<td>
+<p>Specifies which engine to use.  If the R installation
+has <code>tcltk</code> capability then the <code>tcl</code> engine is used
+unless <code>FUN</code> is a proto object or <code>perl=TRUE</code> in which 
+case the
+<code>"R"</code> engine is used (regardless of the setting of this
+argument).</p>
+</td></tr>
+<tr valign="top"><td><code>env</code></td>
+<td>
+<p> Environment in which to evaluate the replacement function.
+Normally this is left at its default value.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p> Other <code>gsub</code> arguments. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>replacement</code> is a string then it acts like <code>gsub</code>.
+</p>
+<p>If <code>replacement</code> is a function then each matched string
+is passed to the replacement function and the output of that
+function replaces the matched string in the result.  The first
+argument to the replacement function is the matched string
+and subsequent arguments are the backreferences, if any.
+</p>
+<p>If <code>replacement</code> is a list then the result of the 
+regular expression match is, in turn,
+matched against the names of that list and the value
+corresponding to the first name in the list that is match is returned.  
+If there are
+no names matching then the first unnamed component is returned
+and if there are no matches then the string to be matched is returned.
+If <code>backref</code> is not specified or is specified and is
+positive then the entire match is used to lookup the value in the list
+whereas if <code>backref</code> is negative then the identified backreference is 
+used.
+</p>
+<p>If <code>replacement</code> is a formula instead of a function then
+a one line function is created whose body is the right hand side
+of the formula and whose arguments are the left hand side separated
+by <code>+</code> signs (or any other valid operator).  The environment
+of the function is the environment of the formula.  If the arguments
+are omitted then the free variables found on the right hand side
+are used in the order encountered.  <code>0</code> can be used to indicate
+no arguments.  <code>letters</code>, <code>LETTERS</code> and <code>pi</code> are
+never automatically used as arguments.
+</p>
+<p>If <code>replacement</code> is a proto object then it should have a 
+<code>fun</code> method which is like the replacement function except
+its first argument is the object and the remaining arguments are
+as in the replacement function and are affected by backref in
+the same way.  <code>gsubfn</code> automatically inserts the named arguments
+in the call to <code>gsubfn</code> into the proto object and also
+maintains a <code>count</code> variable which counts matches within
+strings.  The user may optionally specify <code>pre</code> and <code>post</code>
+methods in the proto object which are fired at the beginning and
+end of each string (not each match).  They each take one argument,
+the object.
+</p>
+<p>Note that if the <code>"R"</code> engine is used and if backref is non-negative 
+then internally the pattern will be parenthesized.
+</p>
+<p>A utility function <code>cat0</code> is available.
+They are like
+<code><a href="../../base/html/cat.html">cat</a></code> and <code><a href="../../base/html/paste.html">paste</a></code> except that their default
+<code>sep</code> value is <code>""</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>As in <code>gsub</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="strapply.html">strapply</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+# adds 1 to each number in third arg
+gsubfn("[[:digit:]]+", function(x) as.numeric(x)+1, "(10 20)(100 30)") 
+
+# same but using formula notation for function
+gsubfn("[[:digit:]]+", ~ as.numeric(x)+1, "(10 20)(100 30)") 
+
+# replaces pairs m:n with their sum
+s &lt;- "abc 10:20 def 30:40 50"
+gsubfn("([0-9]+):([0-9]+)", ~ as.numeric(x) + as.numeric(y), s)
+
+# default pattern for gsubfn does quasi-perl-style string interpolation
+gsubfn( , , "pi = $pi, 2pi = `2*pi`") 
+
+# Extracts numbers from string and places them into numeric vector v.
+# Normally this would be done in strapply instead.
+v &lt;- c(); f &lt;- function(x) v &lt;&lt;- append(v,as.numeric(x))
+junk &lt;- gsubfn("[0-9]+", f, "12;34:56,89,,12")
+v
+
+# same
+strapply("12;34:56,89,,12", "[0-9]+", simplify = c)
+
+# replaces numbers with that many Xs separated by -
+gsubfn("[[:digit:]]+", ~ paste(rep("X", n), collapse = "-"), "5.2")
+
+# replaces units with scale factor
+gsubfn(".m", list(cm = "e1", km = "e6"), "33cm 45km")
+
+# place &lt;...&gt; around first two occurrences
+p &lt;- proto(fun = function(this, x) if (count &lt;= 2) paste0("&lt;", x, "&gt;") else x)
+gsubfn("\\w+", p, "the cat in the hat is back")
+
+# replace each number by cumulative sum to that point
+p2 &lt;- proto(pre = function(this) this$value &lt;- 0,
+	fun = function(this, x) this$value &lt;- value + as.numeric(x))
+gsubfn("[0-9]+", p2, "12 3 11, 25 9")
+
+# this only works if your R installation has tcltk capabilities
+# See following example for corresponding code with R engine
+if (isTRUE(capabilities()[["tcltk"]])) {
+	gsubfn("(.)\\1", ~ paste0(`&amp;`, "!"), "abbcddd")
+}
+
+# with R and backref &gt;=0 (implied) the pattern is internally parenthesized
+# so must use \2 rather than \1
+gsubfn("(.)\\2", ~ paste0(`&amp;`, "!"), "abbcddd", engine = "R")
+
+
+</pre>
+
+<hr><div align="center">[Package <em>gsubfn</em> version 0.6-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

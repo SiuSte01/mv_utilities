@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Transform formula arguments to functions.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for fn {gsubfn}"><tr><td>fn {gsubfn}</td><td align="right">R Documentation</td></tr></table>
+
+<h2> Transform formula arguments to functions. </h2>
+
+<h3>Description</h3>
+
+<p>When used in the form <code>fn\$somefunction(...arguments...)</code>
+it converts formulas among the arguments of somefunction to
+functions using <code><a href="as.function.formula.html">as.function.formula</a></code>.  It uses a heuristic
+to decide which formulas to convert.  If any of the following
+are true then that argument is converted from a formula to a
+function: (1) there is only one formula among the arguments,
+(2) the name of the formula argument is <code>FUN</code> or
+(3) the formula argument is not the first argument in the
+argument list.
+</p>
+<p>It also removes any <code>simplify</code> argument whose value is
+not logical and after processing it in the same way just
+discussed in order to interpret it as a function it passes
+the output of the command through <code>do.call(simplify, output)</code>.
+</p>
+<p>It also performs quasi-perl style string interpolation on any 
+character string arguments that begin with <code>\1</code> removing
+the <code>\1</code> character.  A dollar sign followed by a variable
+name or <code>R</code> code within backticks are both evaluated.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'fn'
+x$FUN 
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+ <p><code>fn</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>FUN</code></td>
+<td>
+<p>Name of a function.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a function.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="as.function.formula.html">as.function.formula</a></p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+   # use of formula to specify a function.
+   # Note that LETTERS, letters and pi are automatically excluded from args
+   fn$lapply(list(1:4, 1:3), ~ LETTERS[x])
+   fn$sapply(1:3, ~ sin((n-1) * pi/180))
+
+   # use of simplify = rbind instead of do.call(rbind, by(...)).
+   # args to anonymous function are automatically determined.
+   fn$by(BOD, 1:nrow(BOD), ~ c(mn = min(x), mx = max(x)), simplify = rbind)
+
+   # calculate lm coefs of uptake vs conc for each Plant
+   fn$by(CO2, CO2$Plant, d ~ coef(lm(uptake ~ conc, d)), simplify = rbind)
+
+   # mid range of conc and uptake by Plant
+   fn$aggregate(CO2[,4:5], CO2[1], ~ mean(range(x)))
+
+   # string interpolation
+   j &lt;- fn$cat("pi = $pi, exp = `exp(1)`\n")
+
+## Not run: 
+
+   # same but use cast/melt from reshape package
+   library(reshape)
+   fn$cast(Plant ~ variable, data = melt(CO2, id = 1:3), ~~ mean(range(x)))
+
+   # same
+   # uncomment when new version of doBy comes out (expected shortly)
+   # library(doBy)
+   # fn$summaryBy(.~Plant,CO2[-(2:3)],FUN= ~~mean(range(x)), pref='midrange')
+
+## End(Not run)
+
+   # generalized matrix product
+   # can replace sum(x*y) with any other inner product of interest
+   # this example just performs matrix multiplication of a times b
+   a &lt;- matrix(4:1, 2)
+   b &lt;- matrix(1:4, 2)
+   fn$apply(b, 2, x ~ fn$apply(a, 1, y ~ sum(x*y)))
+
+   # integration
+   fn$integrate(~1/((x+1)*sqrt(x)), lower = 0, upper = Inf)
+
+   # optimization
+   fn$optimize(~ x^2, c(-1,1))
+
+   # using fn with S4 definitions
+   setClass('ooc', representation(a = 'numeric'))
+   fn$setGeneric('incr', x + value ~ standardGeneric('incr'))
+   fn$setMethod('incr', 'ooc', x + value ~ {x@a &lt;- x@a+value; x})
+   oo &lt;- new('ooc',a=1)
+   oo &lt;- incr(oo,1)
+   oo
+
+## Not run: 
+
+   # plot quantile regression fits for various values of tau
+   library(quantreg)
+   data(engel)
+   plot(engel$x, engel$y, xlab = 'income', ylab = 'food expenditure')
+   junk &lt;- fn$lapply(1:9/10, tau ~ abline(coef(rq(y ~ x, tau, engel))))
+
+   # rolling mid-range
+   library(zoo)
+   fn$rollapply(LakeHuron, 12, ~ mean(range(x)))
+
+   library(lattice)
+   fn$xyplot(uptake ~ conc | Plant, CO2,
+      panel = ... ~ { panel.xyplot(...); panel.text(200, 40, lab = 'X') })
+
+   library(boot)
+   set.seed(1)
+   fn$boot(rivers, ~ median(x, d), R = 2000)
+
+## End(Not run)
+
+   x &lt;- 0:50/50
+   matplot(x, fn$outer(x, 1:8, ~ sin(x * k*pi)), type = 'blobcsSh')
+
+
+</pre>
+
+<hr><div align="center">[Package <em>gsubfn</em> version 0.6-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

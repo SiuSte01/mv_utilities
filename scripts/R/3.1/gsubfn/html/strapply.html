@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Apply a function over a string or strings.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for strapply {gsubfn}"><tr><td>strapply {gsubfn}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>  
+Apply a function over a string or strings.
+</h2>
+
+<h3>Description</h3>
+
+<p>Similar to <code>"'gsubfn'"</code> except instead of performing substitutions
+it returns the output of <code>"'FUN'"</code>.</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+strapply(X, pattern, FUN = function(x, ...) x, backref, ..., empty,
+	ignore.case = FALSE, perl = FALSE, engine,
+	simplify = FALSE, USE.NAMES, combine = c)
+strapplyc(X, pattern, backref, ignore.case = FALSE, simplify = FALSE, USE.NAMES, engine)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>X</code></td>
+<td>
+<p> list or (atomic) vector of character strings to be used. </p>
+</td></tr>
+<tr valign="top"><td><code>pattern</code></td>
+<td>
+<p> character string containing a regular expression (or
+character string for <code>"'fixed = TRUE')"</code> to be matched in the
+given character vector.</p>
+</td></tr>
+<tr valign="top"><td><code>FUN</code></td>
+<td>
+<p> a function, formula, character string, list or proto object 
+to be applied to each element of 
+<code>"'X'"</code>.  See discussion in <code><a href="gsubfn.html">gsubfn</a></code>. </p>
+</td></tr>
+<tr valign="top"><td><code>backref</code></td>
+<td>
+<p>See <code><a href="gsubfn.html">gsubfn</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>empty</code></td>
+<td>
+<p>If there is no match to a string return this value.</p>
+</td></tr>
+<tr valign="top"><td><code>ignore.case</code></td>
+<td>
+<p>If <code>TRUE</code> then case is ignored in the <code>pattern</code>
+argument.</p>
+</td></tr>
+<tr valign="top"><td><code>perl</code></td>
+<td>
+<p>If <code>TRUE</code> then <code>engine="R"</code> is used with
+perl regular expressions.</p>
+</td></tr>
+<tr valign="top"><td><code>engine</code></td>
+<td>
+<p>This argument defaults to <code>getOption("gsubfn.engine")</code>.
+If that option has not been set <code>engine</code>
+defaults to the <code>"R"</code> engine if (1) <code>FUN</code>
+is a proto object or if (2) the R installation does not have <code>tcltk</code>
+capability.  If the <code>"R"</code> default does not apply then it defaults to the
+<code>"tcl"</code> engine.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p> optional arguments to <code>"'gsubfn'"</code>. </p>
+</td></tr>
+<tr valign="top"><td><code>simplify</code></td>
+<td>
+<p>  logical or function.  If logical, should the result be 
+simplified to a vector or matrix, as in <code>"sapply"</code> if possible?
+If function, that function is applied to the result with each
+component of the result passed as a separate argument.  Typically
+if the form is used it will typically be specified as rbind.</p>
+</td></tr>
+<tr valign="top"><td><code>USE.NAMES</code></td>
+<td>
+<p> logical; if <code>"'TRUE'"</code> and if <code>"'X'"</code> is 
+character, use <code>"'X'"</code> as
+'names' for the result unless it had names already. Default is 
+<code>FALSE</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>combine</code></td>
+<td>
+<p>combine is a function applied to the components of 
+the result of <code>FUN</code>.
+The default is <code>"c"</code>. <code>"list"</code>
+is another common choice.  The default may change to be <code>"list"</code>
+in the future.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>FUN</code> is a function then for
+each character string in <code>"X"</code> the pattern is repeatedly
+matched, 
+each such match along with
+back references, if any, are passed to 
+the function <code>"FUN"</code> and the output of <code>FUN</code> is returned as a list.
+If <code>FUN</code> is a formula or proto object then it is interpreted 
+to the way discussed in <code><a href="gsubfn.html">gsubfn</a></code>.
+</p>
+<p>If <code>FUN</code> is a proto object or if <code>perl=TRUE</code> is specified
+then <code>engine="R"</code> is used and the <code>engine</code> argument is ignored.
+</p>
+<p>If <code>backref</code> is not specified and
+<code>engine="R"</code> is specified or implied then a heuristic is 
+used to calculate the number of backreferences.  The primary situation
+that can fool it is if there are parentheses in the string that are
+not back references. 
+In those cases the user will have to specify backref.
+If <code>engine="tcl"</code> then an exact algorithm is used and the problem
+sentence never occurs.
+</p>
+<p><code>strapplyc</code> is like <code>strapply</code> but specialized to <code>FUN=c</code> for
+speed.  If the <code>"tcl"</code> engine is not available then it calls 
+<code>strapply</code> and there will be no speed advantage.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of character strings.  
+</p>
+
+
+<h3>See Also</h3>
+
+<p> See <code><a href="gsubfn.html">gsubfn</a></code>.
+For regular expression syntax used in tcl see
+<a href="http://www.tcl.tk/man/tcl8.6/TclCmd/re_syntax.htm">http://www.tcl.tk/man/tcl8.6/TclCmd/re_syntax.htm</a>
+and for regular expression syntax used in R see the help page for <code>regex</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+strapply("12;34:56,89,,12", "[0-9]+")
+
+# separate leading digits from rest of string
+# creating a 2 column matrix: digits, rest
+s &lt;- c("123abc", "12cd34", "1e23")
+t(strapply(s, "^([[:digit:]]+)(.*)", c, simplify = TRUE)) 
+
+# same but create matrix
+strapply(s, "^([[:digit:]]+)(.*)", c, simplify = rbind)
+
+# running window of 5 characters using 0-lookahead perl regexp
+# Note that the three ( in the regexp will fool it into thinking there
+# are three backreferences so specify backref explicitly.
+x &lt;- "abcdefghijkl"
+strapply(x, "(.)(?=(....))",  paste0, backref = -2, perl = TRUE)[[1]]
+
+# Note difference.  First gives character vector.  Second is the same.
+# Third has same elements but is a list.
+# Fourth gives list of two character vectors. Fifth is the same.
+strapply("a:b c:d", "(.):(.)", c)[[1]]
+strapply("a:b c:d", "(.):(.)", list, simplify = unlist) # same
+
+strapply("a:b c:d", "(.):(.)", list)[[1]]
+
+strapply("a:b c:d", "(.):(.)", c, combine = list)[[1]]
+strapply("a:b c:d", "(.):(.)", c, combine = list, simplify = c) # same
+
+# find second CPU_SPEED value given lines of config file
+Lines &lt;- c("DEVICE = 'PC'", "CPU_SPEED = '1999', '233'")
+parms &lt;- strapply(Lines, "[^ ',=]+", c, USE.NAMES = TRUE, 
+	simplify = ~ lapply(list(...), "[", -1))
+parms$CPU_SPEED[2]
+
+# return first two words in each string
+p &lt;- proto(fun = function(this, x) if (count &lt;=2) x)
+strapply(c("the brown fox", "the eager beaver"), "\\w+", p)
+
+## Not run: 
+# convert to chron
+library(chron)
+x &lt;- c("01/15/2005 23:32:45", "02/27/2005 01:22:30")
+x.chron &lt;- strapply(x, "(../../....) (..:..:..)",  chron, simplify = c)
+
+# time parsing of all 275,546 words from James Joyce's Ulysses
+joyce &lt;- readLines("http://www.gutenberg.org/files/4300/4300-8.txt") 
+joycec &lt;- paste(joyce, collapse = " ") 
+system.time(s &lt;- strapplyc(joycec, "\\w+")[[1]]) 
+length(s) # 275546 
+
+## End(Not run)
+
+</pre>
+
+<hr><div align="center">[Package <em>gsubfn</em> version 0.6-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

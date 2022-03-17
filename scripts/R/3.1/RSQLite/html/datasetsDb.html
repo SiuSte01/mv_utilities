@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: A sample sqlite database.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for datasetsDb {RSQLite}"><tr><td>datasetsDb {RSQLite}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>A sample sqlite database.</h2>
+
+<h3>Description</h3>
+
+<p>This database is bundled with the package, and contains all data frames
+in the datasets package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+datasetsDb()
+</pre>
+
+
+<h3>Examples</h3>
+
+<pre>
+db &lt;- datasetsDb()
+dbListTables(db)
+
+dbReadTable(db, "CO2")
+dbGetQuery(db, "SELECT * FROM CO2 WHERE conc &lt; 100")
+
+dbDisconnect(db)
+</pre>
+
+<hr><div align="center">[Package <em>RSQLite</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

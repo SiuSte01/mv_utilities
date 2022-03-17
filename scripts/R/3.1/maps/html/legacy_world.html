@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Legacy low resolution World Map.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for legacy_world {maps}"><tr><td>legacy_world {maps}</td><td align="right">R Documentation</td></tr></table>
+
+<h2> Legacy low resolution World Map.</h2>
+
+<h3>Description</h3>
+
+<p>This world database comes from a thinned cleaned-up version of the CIA World Data Bank II data and contains approximately 30,000 points representing the world coastlines and national boundaries approximatly around 1990.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>data(worldMapEnv)</pre>
+
+
+<h3>Format</h3>
+
+<p>The data file is merely a character string which
+specifies the name of an environment variable which contains the
+base location of the binary files used by the map drawing functions.
+This environment variable (<code>R_MAP_DATA_DIR</code> for the datasets in the
+maps package) is set at package load time <EM>if it does not
+already exist</EM>.  Hence setting the environment variable before loading
+the package can override the default location of the binary datasets.
+</p>
+<p>During a transition period (<code>maps</code> version 3.0) it is possible to switch to the old legacy map using the function <code>world.legacy(TRUE)</code> or by setting the setting the environment variable R_MAP_DATA_LEGACY=TRUE prior to loading the package.
+</p>
+
+
+<h3>Source</h3>
+
+<p>The CIA World Data Bank II is currently (2015) still available from 
+<a href="https://www.evl.uic.edu/pape/data/WDB/">https://www.evl.uic.edu/pape/data/WDB/</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Richard A. Becker, and Allan R. Wilks,
+&quot;Maps in S&quot;,
+<EM>AT\&amp;T Bell Laboratories Statistics Research Report [93.2], 1993.</EM>
+</p>
+<p>Richard A. Becker, and Allan R. Wilks,
+&quot;Constructing a Geographical Database&quot;,
+<EM>AT\&amp;T Bell Laboratories Statistics Research Report [95.2], 1995.</EM>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="map.html">map</a></code>,<code><a href="world.legacy.html">world.legacy</a></code>,<code><a href="world.html">world</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+map('legacy_world', fill = TRUE, col = 1:10)
+</pre>
+
+<hr><div align="center">[Package <em>maps</em> version 3.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

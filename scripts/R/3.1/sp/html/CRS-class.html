@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Class &quot;CRS&quot; of coordinate reference system arguments</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for CRS-class {sp}"><tr><td>CRS-class {sp}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Class &quot;CRS&quot; of coordinate reference system arguments</h2>
+
+<h3>Description</h3>
+
+<p>Interface class to the PROJ.4 projection system. The class is defined as an empty stub accepting value NA in the sp package. If the rgdal package is available, then the class will permit spatial data to be associated with coordinate reference systems. The arguments must be entered exactly as in the PROJ.4 documentation, in particular there cannot be any white space in +&lt;arg&gt;=&lt;value&gt; strings, and successive such strings can only be separated by blanks. Note that only &ldquo;+proj=longlat +ellps=WGS84&rdquo; is accepted for geographical coordinates, which must be ordered (eastings, northings); the &ldquo;+ellps=&rdquo; definition must be given (or expanded internally from a given &ldquo;+datum=&rdquo; value) for recent versions of the PROJ.4 library, and should be set to an appropriate value.</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+CRS(projargs, doCheckCRSArgs=TRUE)
+identicalCRS(x,y)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>projargs</code></td>
+<td>
+<p>A character string of projection arguments; the arguments must be entered exactly as in the PROJ.4 documentation; if the projection is unknown, use <code>as.character(NA)</code>, it may be missing or an empty string of zero length and will then set to the missing value.</p>
+</td></tr>
+<tr valign="top"><td><code>doCheckCRSArgs</code></td>
+<td>
+<p>default TRUE, must be set to FALSE by package developers including <code>CRS</code> in an S4 class definition to avoid uncontrolable loading of the <span class="pkg">rgdal</span> namespace</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>object having a <a href="is.projected.html">proj4string</a> method,
+or if <code>y</code> is missing, list with objects that have a <code>proj4string</code> method</p>
+</td></tr>
+<tr valign="top"><td><code>y</code></td>
+<td>
+<p>object of class <a href="Spatial-class.html">Spatial</a>, or having a <a href="is.projected.html">proj4string</a> method</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>CRS</code> returns on success an object of class
+<a href="CRS-class.html">CRS</a>. <code>identicalCRS</code> returns a logical, indicating
+whether <code>x</code> and <code>y</code> have identical CRS, or if <code>y</code>
+is missing whether all objects in list <code>x</code>
+have identical CRS.
+</p>
+
+
+<h3>Objects from the Class</h3>
+
+<p>Objects can be created by calls of the form <code>CRS("projargs")</code>, where &quot;projargs&quot; is a valid string of PROJ.4 arguments. The initiation function calls the PROJ.4 library to verify the argument set against those known in the library, returning error messages where necessary. The function <code>CRSargs()</code> can be used to show the expanded argument list used by the PROJ.4 library.
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>projargs</code>:</dt><dd><p>Object of class <code>"character"</code>: projection arguments; the arguments must be entered exactly as in the PROJ.4 documentation, in particular there cannot be any white space in +&lt;arg&gt;=&lt;value&gt; strings, and successive such strings can only be separated by blanks. </p>
+</dd>
+</dl>
+
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt>show</dt><dd><p><code>signature(object = "CRS")</code>: print projection arguments in object </p>
+</dd>
+</dl>
+
+
+
+<h3>Note</h3>
+
+<p>Lists of projections may be seen by using the programs installed with the PROJ.4 library, in particular proj and cs2cs; with the latter, -lp lists projections, -le ellipsoids, -lu units, and -ld datum(s) known to the installed software (available in <span class="pkg">rgdal</span> using <code>projInfo</code>). These are added to in successive releases, so tracking the website or compiling and installing the most recent revisions will give the greatest choice. Finding the very important datum transformation parameters to be given with the +towgs84 tag is a further challenge, and is essential when the datums used in data to be used together differ. Tracing projection arguments is easier now than before the mass ownership of GPS receivers raised the issue of matching coordinates from different argument sets (GPS output and paper map, for example). See <code><a href="../../rgdal/html/GridsDatums.html">GridsDatums</a></code>, <code><a href="../../rgdal/html/make_EPSG.html">make_EPSG</a></code> and <code><a href="../../rgdal/html/showEPSG.html">showEPSG</a></code> for help in finding CRS definitions.
+</p>
+<p>The 4.9.1 release of PROJ.4 omitted a small file of defaults, leading to reports of &ldquo;major axis or radius = 0 or not given&rdquo; errors. From 0.9-3, rgdal checks for the presence of this file (proj_def.dat), and if not found, and under similar conditions to those used by PROJ.4, adds &ldquo;+ellps=WGS84&rdquo; to the input string being checked by <code>checkCRSArgs</code> The &ldquo;+no_defs&rdquo; tag ignores the file of defaults, and the default work-around implemented to get around this problem; strings including &ldquo;init&rdquo; and &ldquo;datum&rdquo; tags also trigger the avoidance of the work-around. Now messages are issued when a candidate CRS is checked; they may be suppressed using <code>suppressMessages</code>.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Roger Bivand <a href="mailto:Roger.Bivand@nhh.no">Roger.Bivand@nhh.no</a></p>
+
+
+<h3>References</h3>
+
+<p><a href="https://github.com/OSGeo/proj.4">https://github.com/OSGeo/proj.4</a></p>
+
+
+<h3>Examples</h3>
+
+<pre>
+CRS()
+CRS("")
+CRS(as.character(NA))
+CRS("+proj=longlat +datum=WGS84")
+if (require(rgdal)) {
+  print(CRSargs(CRS("+proj=longlat +datum=NAD27")))
+  print(CRSargs(CRS("+init=epsg:4267")))
+  print(CRSargs(CRS("+init=epsg:26978")))
+  print(CRSargs(CRS(paste("+proj=sterea +lat_0=52.15616055555555",
+ "+lon_0=5.38763888888889 +k=0.999908 +x_0=155000 +y_0=463000 +ellps=bessel",
+ " +towgs84=565.237,50.0087,465.658,-0.406857,0.350733,-1.87035,4.0812 +units=m"))))
+  print(CRSargs(CRS("+init=epsg:28992")))
+}
+# see http://trac.osgeo.org/gdal/ticket/1987
+</pre>
+
+<hr><div align="center">[Package <em>sp</em> version 1.2-2 <a href="00Index.html">Index</a>]</div>
+</body></html>

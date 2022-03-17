@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Fetch records from a previously executed query</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for dbFetch {DBI}"><tr><td>dbFetch {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Fetch records from a previously executed query</h2>
+
+<h3>Description</h3>
+
+<p>Fetch the next <code>n</code> elements (rows) from the result set and return them
+as a data.frame.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+dbFetch(res, n = -1, ...)
+
+fetch(res, n = -1, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>res</code></td>
+<td>
+<p>An object inheriting from <code><a href="DBIResult-class.html">DBIResult</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>maximum number of records to retrieve per fetch. Use <code>n = -1</code>
+to retrieve all pending records.  Some implementations may recognize other
+special values.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Other arguments passed on to methods.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>fetch</code> is provided for compatibility with older DBI clients - for all
+new code you are strongly encouraged to use <code>dbFetch</code>. The default
+method for <code>dbFetch</code> calls <code>fetch</code> so that it is compatible with
+existing code. Implementors are free to provide methods for <code>dbFetch</code>
+only.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a data.frame with as many rows as records were fetched and as many
+columns as fields in the result set.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>close the result set with <code><a href="dbClearResult.html">dbClearResult</a></code> as soon as you
+finish retrieving the records you want.
+</p>
+<p>Other DBIResult generics: <code><a href="DBIResult-class.html">DBIResult-class</a></code>,
+<code><a href="SQL.html">SQL</a></code>, <code><a href="dbBind.html">dbBind</a></code>,
+<code><a href="dbClearResult.html">dbClearResult</a></code>, <code><a href="dbColumnInfo.html">dbColumnInfo</a></code>,
+<code><a href="dbGetInfo.html">dbGetInfo</a></code>, <code><a href="dbGetRowCount.html">dbGetRowCount</a></code>,
+<code><a href="dbGetRowsAffected.html">dbGetRowsAffected</a></code>,
+<code><a href="dbGetStatement.html">dbGetStatement</a></code>,
+<code><a href="dbHasCompleted.html">dbHasCompleted</a></code>, <code><a href="dbIsValid.html">dbIsValid</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+con &lt;- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbWriteTable(con, "mtcars", mtcars)
+
+# Fetch all results
+rs &lt;- dbSendQuery(con, "SELECT * FROM mtcars WHERE cyl = 4")
+dbFetch(rs)
+dbClearResult(rs)
+
+# Fetch in chunks
+rs &lt;- dbSendQuery(con, "SELECT * FROM mtcars")
+while (!dbHasCompleted(rs)) {
+  chunk &lt;- fetch(rs, 10)
+  print(nrow(chunk))
+}
+
+dbClearResult(rs)
+dbDisconnect(con)
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>

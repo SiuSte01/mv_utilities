@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Concatenate Two Character Vectors</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for %s+% {stringi}"><tr><td>%s+% {stringi}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Concatenate Two Character Vectors</h2>
+
+<h3>Description</h3>
+
+<p>Binary operators for joining (concatenating) two character vectors,
+with a typical <font face="Courier New,Courier" color="#666666"><b>R</b></font> look-and-feel.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+e1 %s+% e2
+
+e1 %stri+% e2
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>e1</code></td>
+<td>
+<p>a character vector or an object coercible to a character vector</p>
+</td></tr>
+<tr valign="top"><td><code>e2</code></td>
+<td>
+<p>a character vector or an object coercible to a character vector</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Vectorized over <code>e1</code> and <code>e2</code>.
+</p>
+<p>These operators act like a call to <code><a href="stri_join.html">stri_join</a>(e1, e2, sep="")</code>.
+However, note that joining 3 vectors, e.g. <code>e1 %+% e2 %+% e3</code>
+is slower than <code><a href="stri_join.html">stri_join</a>(e1, e2, e3, sep="")</code>,
+because it creates a new (temporary) result vector each time
+the operator is applied.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a character vector.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+c('abc', '123', '\u0105\u0104') %stri+% letters[1:6]
+'ID_' %stri+% 1:5
+</pre>
+
+<hr><div align="center">[Package <em>stringi</em> version 1.0-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

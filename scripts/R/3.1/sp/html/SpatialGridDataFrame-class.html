@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Class &quot;SpatialGridDataFrame&quot;</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for SpatialGridDataFrame-class {sp}"><tr><td>SpatialGridDataFrame-class {sp}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Class &quot;SpatialGridDataFrame&quot; </h2>
+
+<h3>Description</h3>
+
+<p>  Class for spatial attributes that have spatial locations
+on a (full) regular grid. </p>
+
+
+<h3>Objects from the Class</h3>
+
+<p>Objects can be created by calls of the form <code>as(x,
+"SpatialGridDataFrame")</code>, where <code>x</code> is of class
+<a href="SpatialPixelsDataFrame-class.html">SpatialPixelsDataFrame-class</a>, or by importing through rgdal.  
+Ordered full grids are stored instead or unordered non-NA cells; 
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>grid</code>:</dt><dd><p>see <a href="GridTopology-class.html">GridTopology-class</a>; grid parameters </p>
+</dd>
+<dt><code>bbox</code>:</dt><dd><p>Object of class <code>"matrix"</code>; bounding box </p>
+</dd>
+<dt><code>proj4string</code>:</dt><dd><p>Object of class <code>"CRS"</code>; projection </p>
+</dd>
+<dt><code>data</code>:</dt><dd><p>Object of class data.frame, containing attribute data </p>
+</dd>
+</dl>
+
+
+
+<h3>Extends</h3>
+
+<p>Class <code>"SpatialGrid"</code>, directly.
+Class <code>"Spatial"</code>, by class <code>"SpatialGrid"</code>.
+</p>
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt>coordinates</dt><dd><p><code>signature(x = "SpatialGridDataFrame")</code>: retrieves (and calculates!) coordinates </p>
+</dd>
+<dt>[</dt><dd><p><code>signature(x = "SpatialGridDataFrame")</code>: selects rows, columns, and attributes; returns an
+object of class <code>SpatialGridDataFrame</code></p>
+</dd>
+<dt>as.matrix</dt><dd><p><code>signature(x = "SpatialGridDataFrame")</code>: coerce to matrix; increasing col index corresponds to decreasing y coordinate, row index increases with coordinate index </p>
+</dd>
+<dt>as.array</dt><dd><p><code>signature(x = "SpatialGridDataFrame")</code>: coerce to array; increasing array index for the second dimension corresponds to decreasing coordinates, all other coordinate dimensions increase with array index </p>
+</dd>
+<dt>cbind</dt><dd><p><code>signature(...)</code>: if arguments have identical topology, combine their
+attribute values</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p> Edzer Pebesma, <a href="mailto:edzer.pebesma@uni-muenster.de">edzer.pebesma@uni-muenster.de</a> </p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="SpatialGrid-class.html">SpatialGrid-class</a></code>, which does not contain the attribute data,
+and <code><a href="SpatialPixelsDataFrame-class.html">SpatialPixelsDataFrame-class</a> which holds possibly incomplete
+  grids </code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(meuse.grid) # only the non-missing valued cells
+coordinates(meuse.grid) = c("x", "y") # promote to SpatialPointsDataFrame
+gridded(meuse.grid) &lt;- TRUE # promote to SpatialPixelsDataFrame
+x = as(meuse.grid, "SpatialGridDataFrame") # creates the full grid
+x[["idist"]] = 1 - x[["dist"]] # assigns new attribute
+image(x["idist"]) # note the single [ for attribute selection
+
+# toy example:
+df = data.frame(z = c(1:6,NA,8,9),
+    xc = c(1,1,1,2,2,2,3,3,3),
+    yc = c(rep(c(0, 1.5, 3),3)))
+coordinates(df) = ~xc+yc
+gridded(df) = TRUE
+df = as(df, "SpatialGridDataFrame") # to full grid
+image(df["z"])
+# draw labels to verify:
+cc = coordinates(df)
+z=df[["z"]]
+zc=as.character(z)
+zc[is.na(zc)]="NA"
+text(cc[,1],cc[,2],zc)
+
+# the following is weird, but illustrates the concept of row/col selection:
+fullgrid(meuse.grid) = TRUE
+image(meuse.grid)
+image(meuse.grid[20:70, 10:70, "dist"], add = TRUE, col = bpy.colors())
+
+# as.matrix, as.array
+sgdim = c(3,4)
+SG = SpatialGrid(GridTopology(rep(0,2), rep(10,2), sgdim))
+SGDF = SpatialGridDataFrame(SG, data.frame(val = 1:12))
+as.array(SGDF)
+as.matrix(SGDF)
+as(SGDF, "array")
+</pre>
+
+<hr><div align="center">[Package <em>sp</em> version 1.2-2 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Make a munsell colour less saturated</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for desaturate {munsell}"><tr><td>desaturate {munsell}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Make a munsell colour less saturated</h2>
+
+<h3>Description</h3>
+
+<p>Decreases the chroma of the Munsell colour by one step steps (multiples of 2).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+desaturate(col, steps = 1)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>col</code></td>
+<td>
+<p>character vector of Munsell colours</p>
+</td></tr>
+<tr valign="top"><td><code>steps</code></td>
+<td>
+<p>number of steps to take in decreasing chroma</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>character vector of Munsell colours
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+desaturate("5PB 2/4")
+cols &lt;- c("5PB 2/6", "5Y 7/8")
+p &lt;- plot_mnsl(c(cols, desaturate(cols), desaturate(cols, 2)))
+p + ggplot2::facet_wrap(~ names, ncol = 2)
+</pre>
+
+<hr><div align="center">[Package <em>munsell</em> version 0.4.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

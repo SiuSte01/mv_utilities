@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Make a one-line function from a formula.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for as.function.formula {gsubfn}"><tr><td>as.function.formula {gsubfn}</td><td align="right">R Documentation</td></tr></table>
+
+<h2> Make a one-line function from a formula. </h2>
+
+<h3>Description</h3>
+
+<p>Create a function from a formula.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'formula'
+as.function(x, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p> Formula with no left side. </p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p> Currently not used. </p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A function is returned whose formal arguments are the
+variables in the left hand side, whose body
+is the expression on the right side of the formula and whose 
+environment is the environment of the formula.  If there is
+no left hand side the free variables on the right, in the 
+order encountered are used as the arguments.  <code>letters</code>,
+<code>LETTERS</code> and <code>pi</code> are ignored and not used as arguments.
+If there is no left hand side and 
+any of <code>..1</code>, <code>..2</code>, ..., <code>..9</code> are found
+as free variables then they are not used as arguments but <code>...</code> 
+is used as a trailing argument instead.
+If there is no left hand side and <code>`&amp;`</code> is found as a free variable
+then that variable is used as the first argument and <code>...</code> is added
+as the last argument.
+If the left hand side is <code>0</code> then the function is created as
+a zero argument function.
+</p>
+
+
+<h3>Note</h3>
+
+<p><code>-&gt;</code>, <code>-&gt;&gt;</code>, <code>=</code>, <code>&lt;-</code>, <code>&lt;&lt;-</code> and <code>?</code>
+all have lower operator precdence than <code>~</code> so function bodies that
+contain them typically must be surrounded with <code>{...}</code>.</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="../../base/html/Syntax.html">Syntax</a></code>.</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+old.options &lt;- options(keep.source = FALSE)
+as.function(~ as.numeric(x) + as.numeric(y))
+as.function(x + y ~ as.numeric(x) + as.numeric(y)) # same
+as.function(~ ..1 + ..2)
+# the replacement function in gsubfn uses as.function.formula to
+# interpret formulas as functions.  Here we insert ! after each digit.
+gsubfn("[0-9]", ~ paste0(`&amp;`, "!"), "ab4cd5") 
+## Not run: 
+# example where function body must be surrounded with {...} 
+# due to use of &lt;&lt;-.  See warning section above.
+assign("mywarn", NULL, .GlobalEnv)
+fn$tryCatch( warning("a warning"), 
+    warning = w ~ { mywarn &lt;&lt;- conditionMessage(w)})
+print(mywarn)
+
+## End(Not run)
+options(old.options)
+</pre>
+
+<hr><div align="center">[Package <em>gsubfn</em> version 0.6-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Object-Oriented Programming with the Prototype Model</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for proto-package {proto}"><tr><td>proto-package {proto}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>
+Object-Oriented Programming with the Prototype Model
+</h2>
+
+<h3>Description</h3>
+
+<p>Object-oriented programming with the prototype model.  <code>"proto"</code>
+facilitates object-oriented programming using an approach
+that emphasizes objects rather than classes (although it
+is powerful enough to readily represent classes too).
+</p>
+
+
+<h3>Details</h3>
+
+<p><code>"proto"</code> allows one to write object-oriented programs using
+the prototype model.  It is a simple system that
+uses objects rather than classes yet is powerful enough to readily
+encompass classes too.  
+The following are sources of information on <code>"proto"</code>:
+</p>
+
+<table summary="Rd table">
+<tr>
+ <td align="left">
+Home page</td><td align="left"> <code>u &lt;- "http://r-proto.googlecode.com"; browseURL(u)</code></td>
+</tr>
+<tr>
+ <td align="left">
+Overview</td><td align="left"> <code>README &lt;- system.file("README", package = "proto"); file.show(README)</code></td>
+</tr>
+<tr>
+ <td align="left">
+Invoking a demo file</td><td align="left"> <code>demo("proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Referance Card</td><td align="left"> <code>vignette("protoref")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Tutorial </td><td align="left"> <code>vignette("proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Prototype OO concepts document</td><td align="left"> <code>u &lt;- "http://r-proto.googlecode.com/files/prototype_approaches.pdf"; browseURL(u)</code></td>
+</tr>
+<tr>
+ <td align="left">
+News</td><td align="left"> <code>RShowDoc("NEWS", package = "proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Wish List</td><td align="left"> <code>RShowDoc("WISHLIST", package = "proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Thanks</td><td align="left"> <code>RShowDoc("THANKS", package = "proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+License</td><td align="left"> <code>RShowDoc("COPYING", package = "proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+Citation</td><td align="left"> <code>citation(package = "proto")</code></td>
+</tr>
+<tr>
+ <td align="left">
+This File</td><td align="left"> <code>package?proto</code></td>
+</tr>
+<tr>
+ <td align="left">
+Help file</td><td align="left"> <code>?proto</code></td>
+</tr>
+<tr>
+ <td align="left">
+graph.proto Help File</td><td align="left"> <code>?graph.proto</code></td>
+</tr>
+<tr>
+ <td align="left">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Note</h3>
+
+<p>See <code>?graph.proto</code> for the solution to a common
+Linux installation problem with <code>Rgraphviz</code> that <code>proto</code>
+depends on.</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+cat("parent\n")
+oop &lt;- proto(x = 10, view = function(.) paste("this is a:", .$x))
+oop$ls()
+oop$view()
+
+cat("override view in parent\n")
+ooc1 &lt;- oop$proto(view = function(.) paste("this is a: ***", .$x, "***"))
+ooc1$view()
+
+cat("override x in parent\n")
+ooc2 &lt;- oop$proto(x = 20)
+ooc2$view()
+## Not run: 
+g &lt;- graph.proto()
+plot(g)
+
+## End(Not run)
+</pre>
+
+<hr><div align="center">[Package <em>proto</em> version 0.3-10 <a href="00Index.html">Index</a>]</div>
+</body></html>

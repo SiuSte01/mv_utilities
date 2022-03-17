@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Begin/commit/rollback SQL transactions</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for transactions {DBI}"><tr><td>transactions {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Begin/commit/rollback SQL transactions</h2>
+
+<h3>Description</h3>
+
+<p>Not all database engines implement transaction management, in which case
+these methods should not be implemented for the specific
+<code><a href="DBIConnection-class.html">DBIConnection</a></code> subclass.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+dbBegin(conn, ...)
+
+dbCommit(conn, ...)
+
+dbRollback(conn, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>conn</code></td>
+<td>
+<p>A <code><a href="DBIConnection-class.html">DBIConnection</a></code> object, as produced by
+<code><a href="dbConnect.html">dbConnect</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Other parameters passed on to methods.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a logical indicating whether the operation succeeded or not.
+</p>
+
+
+<h3>Side Effects</h3>
+
+<p>The current transaction on the connection <code>con</code> is committed or rolled
+back.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Self-contained transactions: <code><a href="dbWithTransaction.html">dbWithTransaction</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Not run: 
+ora &lt;- dbDriver("Oracle")
+con &lt;- dbConnect(ora)
+
+rs &lt;- dbSendQuery(con,
+      "delete * from PURGE as p where p.wavelength&lt;0.03")
+if (dbGetRowsAffected(rs) &gt; 250) {
+  warning("dubious deletion -- rolling back transaction")
+  dbRollback(con)
+} else {
+  dbCommit(con)
+}
+
+dbClearResult(rs)
+dbDisconnect(con)
+
+## End(Not run)
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>

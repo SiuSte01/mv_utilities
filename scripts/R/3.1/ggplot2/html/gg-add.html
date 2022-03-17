@@ -1,0 +1,125 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Add a new component to a ggplot or theme object.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for +.gg {ggplot2}"><tr><td>+.gg {ggplot2}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Add a new component to a ggplot or theme object.</h2>
+
+<h3>Description</h3>
+
+<p>This operator allows you to add objects to a ggplot or theme object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'gg'
+e1 + e2
+
+e1 %+% e2
+
+e1 %+replace% e2
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>e1</code></td>
+<td>
+<p>An object of class <code>ggplot</code> or <code>theme</code></p>
+</td></tr>
+<tr valign="top"><td><code>e2</code></td>
+<td>
+<p>A component to add to <code>e1</code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If the first object is an object of class <code>ggplot</code>, you can add
+the following types of objects, and it will return a modified ggplot
+object.
+</p>
+
+<ul>
+<li> <p><code>data.frame</code>: replace current data.frame
+(must use <code>%+%</code>)
+</p>
+</li>
+<li> <p><code>uneval</code>: replace current aesthetics
+</p>
+</li>
+<li> <p><code>layer</code>: add new layer
+</p>
+</li>
+<li> <p><code>theme</code>: update plot theme
+</p>
+</li>
+<li> <p><code>scale</code>: replace current scale
+</p>
+</li>
+<li> <p><code>coord</code>: override current coordinate system
+</p>
+</li>
+<li> <p><code>facet</code>: override current coordinate faceting
+</p>
+</li></ul>
+
+<p>If the first object is an object of class <code>theme</code>, you can add
+another theme object. This will return a modified theme object.
+</p>
+<p>For theme objects, the <code>+</code> operator and the <code>%+replace%</code>
+can be used to modify elements in themes.
+</p>
+<p>The <code>+</code> operator updates the elements of e1 that differ from
+elements specified (not NULL) in e2.
+Thus this operator can be used to incrementally add or modify attributes
+of a ggplot theme.
+</p>
+<p>In contrast, the <code>%+replace%</code> operator replaces the
+entire element; any element of a theme not specified in e2 will not be
+present in the resulting theme (i.e. NULL).
+Thus this operator can be used to overwrite an entire theme.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="theme.html">theme</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+### Adding objects to a ggplot object
+p &lt;- ggplot(mtcars, aes(wt, mpg, colour = disp)) +
+  geom_point()
+
+p
+p + coord_cartesian(ylim = c(0, 40))
+p + scale_colour_continuous(breaks = c(100, 300))
+p + guides(colour = "colourbar")
+
+# Use a different data frame
+m &lt;- mtcars[1:10, ]
+p %+% m
+
+### Adding objects to a theme object
+# Compare these results of adding theme objects to other theme objects
+add_el &lt;- theme_grey() + theme(text = element_text(family = "Times"))
+rep_el &lt;- theme_grey() %+replace% theme(text = element_text(family = "Times"))
+
+add_el$text
+rep_el$text
+
+</pre>
+
+<hr><div align="center">[Package <em>ggplot2</em> version 2.1.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

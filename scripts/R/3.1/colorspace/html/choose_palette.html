@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Graphical User Interface for Choosing HCL Color Palettes</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for choose_palette {colorspace}"><tr><td>choose_palette {colorspace}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Graphical User Interface for Choosing HCL Color Palettes</h2>
+
+<h3>Description</h3>
+
+<p>A graphical user interface (GUI) for viewing, manipulating,
+and choosing HCL color palettes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+choose_palette(pal = diverge_hcl, n = 7L, parent = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>pal</code></td>
+<td>
+<p>function; the initial palette, see &lsquo;Value&rsquo; below.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>integer; the initial number of colors in the palette.</p>
+</td></tr>
+<tr valign="top"><td><code>parent</code></td>
+<td>
+<p>tkwin; the GUI parent window.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Computes palettes based on the HCL (hue-chroma-luminance) color
+model (as implemented by <code><a href="polarLUV.html">polarLUV</a></code>). The GUI interfaces
+the palette functions
+<code><a href="rainbow_hcl.html">rainbow_hcl</a></code> for qualitative palettes,
+<code><a href="rainbow_hcl.html">sequential_hcl</a></code> for sequential palettes with a single hue,
+<code><a href="rainbow_hcl.html">heat_hcl</a></code> for sequential palettes with multiple hues, and
+<code><a href="rainbow_hcl.html">diverge_hcl</a></code> for diverging palettes (composed from two single-hue
+sequential palettes).
+</p>
+<p>The GUI allows for interactive modification of the arguments of the respective
+palette-generating functions, i.e.,
+starting/ending hue (wavelength, type of color),
+minimal/maximal chroma (colorfulness),
+minimal maximal luminance (brightness, amount of gray), and
+a power transformations that control how quickly/slowly chroma and/or
+luminance are changed through the palette. Subsets of the parameters
+may not be applicable depending on the type of palette chosen. See
+<code><a href="rainbow_hcl.html">rainbow_hcl</a></code> and Zeileis et al. (2009) for a more detailed
+explanation of the different arguments
+</p>
+<p>Optionally, active palette can be illustrated by using a range of examples
+such as a map, heatmap, scatter plot, perspective 3D surface etc.
+</p>
+<p>To demonstrate different types of deficiencies, the active palette may
+be desaturated (emulating printing on a grayscale printer) and, if the
+<code><a href="../../dichromat/html/dichromat.html">dichromat</a></code> package is available, collapsed to
+emulate different types of color-blindness (without red-green or green-blue
+contrasts).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a palette-generating function with the selected arguments.
+Thus, the returned function takes an integer argument and returns the corresponding
+number of HCL colors by traversing HCL space through interpolation
+of the specified hue/chroma/luminance/power values.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jason C. Fisher and Achim Zeileis</p>
+
+
+<h3>References</h3>
+
+<p>Zeileis A., Hornik K. and Murrell P. (2009),
+Escaping RGBland: Selecting Colors for Statistical Graphics.
+<EM>Computational Statistics &amp; Data Analysis</EM>, <B>53</B>, 3259-3270.
+doi:10.1016/j.csda.2008.11.033
+Preprint available from <a href="http://eeecon.uibk.ac.at/~zeileis/papers/Zeileis+Hornik+Murrell-2009.pdf">http://eeecon.uibk.ac.at/~zeileis/papers/Zeileis+Hornik+Murrell-2009.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="rainbow_hcl.html">rainbow_hcl</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+if(interactive()) {
+pal &lt;- choose_palette()
+filled.contour(volcano, color.palette = pal, asp = 1)
+}
+</pre>
+
+<hr><div align="center">[Package <em>colorspace</em> version 1.2-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

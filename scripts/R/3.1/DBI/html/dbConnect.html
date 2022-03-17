@@ -1,0 +1,88 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: Create a connection to a DBMS</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for dbConnect {DBI}"><tr><td>dbConnect {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>Create a connection to a DBMS</h2>
+
+<h3>Description</h3>
+
+<p>Connect to a DBMS going through the appropriate authorization procedure.
+Some implementations may allow you to have multiple connections open, so you
+may invoke this function repeatedly assigning its output to different
+objects. The authorization mechanism is left unspecified, so check the
+documentation of individual drivers for details.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+dbConnect(drv, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>drv</code></td>
+<td>
+<p>an object that inherits from <code><a href="DBIDriver-class.html">DBIDriver</a></code>,
+or an existing <code><a href="DBIConnection-class.html">DBIConnection</a></code>
+object (in order to clone an existing connection).</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>authorization arguments needed by the DBMS instance; these
+typically include <code>user</code>, <code>password</code>, <code>dbname</code>, <code>host</code>,
+<code>port</code>, etc.  For details see the appropriate <code>DBIDriver</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Each driver will define what other arguments are required, e.g.,
+<code>"dbname"</code> for the database name, <code>"username"</code>, and
+<code>"password"</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object that extends <code><a href="DBIConnection-class.html">DBIConnection</a></code> in a
+database-specific manner. For instance <code>dbConnect(RMySQL::MySQL())</code> produces
+an object of class <code>MySQLConnection</code>. This object is used to direct
+commands to the database engine.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="dbDisconnect.html">dbDisconnect</a></code> to disconnect from a database.
+</p>
+<p>Other DBIDriver generics: <code><a href="DBIDriver-class.html">DBIDriver-class</a></code>,
+<code><a href="dbDataType.html">dbDataType</a></code>, <code><a href="dbDriver.html">dbDriver</a></code>,
+<code><a href="dbGetInfo.html">dbGetInfo</a></code>, <code><a href="dbIsValid.html">dbIsValid</a></code>,
+<code><a href="dbListConnections.html">dbListConnections</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# SQLite only needs a path to the database. Other database drivers
+# will require more details (like username, password, host, port etc)
+con &lt;- dbConnect(RSQLite::SQLite(), ":memory:")
+con
+
+dbListTables(con)
+
+dbDisconnect(con)
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>

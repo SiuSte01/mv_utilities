@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>R: R Database Interface</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body>
+
+<table width="100%" summary="page for DBI-package {DBI}"><tr><td>DBI-package {DBI}</td><td align="right">R Documentation</td></tr></table>
+
+<h2>R Database Interface</h2>
+
+<h3>Description</h3>
+
+<p>A database interface definition for communication
+between R and relational database management systems.  All
+classes in this package are virtual and need to be extended by
+the various R/DBMS implementations.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Important generics: <code><a href="dbConnect.html">dbConnect</a></code>, <code><a href="dbGetQuery.html">dbGetQuery</a></code>,
+<code><a href="dbReadTable.html">dbWriteTable</a></code>, <code><a href="dbDisconnect.html">dbDisconnect</a></code>
+</p>
+<p>Formal specification (currently work in progress and incomplete):
+<a href="DBIspec.html">DBIspec</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+con &lt;- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbWriteTable(con, "iris", iris)
+dbGetQuery(con, "SELECT * FROM iris WHERE [Petal.Width] &gt; 2.3")
+
+dbDisconnect(con)
+</pre>
+
+<hr><div align="center">[Package <em>DBI</em> version 0.5 <a href="00Index.html">Index</a>]</div>
+</body></html>
