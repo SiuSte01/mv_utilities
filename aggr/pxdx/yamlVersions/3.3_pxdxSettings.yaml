@@ -1,0 +1,152 @@
+Job_Id:
+  JOB_ID:
+    req: REQUIRED
+    com: Project Job Id
+    val: ''
+PxDx_Jobs settings:
+  JOB_NAME:
+    req: REQUIRED
+    com: Name of your PxDx Job
+    val: cpDir_yyyy_m_d_INA
+  VINTAGE:
+    req: REQUIRED
+    com: Can be of form yyyymmdd or mm/dd/yyyy or yyyy_mm_dd
+    val: dd/mm/yyyy
+  REQUEST_TYPE:
+    req: REQUIRED
+    com: Whether you want to run a projected project, an unprojected project, or both.
+      Valid options are "P", "U", "B"
+    val: P
+  CLAIMS_DATABASE:
+    req: REQUIRED
+    com: emdeon, emdOnly or nonEmd (trends or alerts valid for Unprojected Jobs)
+    val: emdeon
+  WORKLOAD_TYPE:
+    req: REQUIRED
+    com: range or exact
+    val: range
+  PRACTITIONER_ROLES:
+    req: REQUIRED
+    com: comma separated list of practitioner roles or "cutter"
+    val: operating,attending,other
+  JOB_QUEUE:
+    req: REQUIRED
+    com: which job queue to push to. Talk with Emily Hofer if you need to push to
+      monthly queue
+    val: PXDX
+  ADDITIONAL_EMAILS:
+    req: OPTIONAL
+    com: additional email addresses you want to send notifications to
+    val: ''
+  PRIMARY_DIAGNOSIS:
+    req: OPTIONAL
+    com: If you want to limit Dx codes to Primary DX codes only. "Y" to enable, all
+      other values will default to no
+    val: ''
+  COMBINE_BUCKETS:
+    req: OPTIONAL
+    com: If you want to combine your buckets into a single deliverable. "Y" to enable,
+      all other values will default to no
+    val: ''
+  DONT_PATCH:
+    req: OPTIONAL
+    com: If you do not want post aggregations steps to patch your results. "Y" to
+      enable, all other values will default to no
+    val: ''
+  VARIANT:
+    req: OPTIONAL
+    com: Custom job variable for pxdx_report. Acceptable values (|Default|Medtronic|Mallinckrodt|VGM|DME|HealthGrades)
+    val: ''
+  CMS_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for CMS data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+  SWITCH_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for Switch data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+  STATE_WINDOW:
+    req: OPTIONAL
+    com: "Custom vendor window for State data. Should be of form 'yyyymmdd\tyyyymmdd'\
+      \ for start and end date"
+    val: ''
+PxDx_Code_Groups settings:
+  CODE_GROUPS_FILE:
+    req: REQUIRED
+    com: Location of Code Groups File
+    val: codeGroups.tab
+PxDx_Code_Group_Rules settings:
+  CODE_GROUP_RULES_FILE:
+    req: REQUIRED
+    com: Location of Code Group Rules File
+    val: codeGroupRules.tab
+PxDx_Code_Group_Members settings:
+  CODE_GROUP_MEMBERS_FILE:
+    req: REQUIRED
+    com: Location of Code Group Members file
+    val: codeGroupMembers.tab
+PxDx_Job_Vendor settings:
+  JOB_VENDOR_SETTINGS_FILE:
+    req: REQUIRED
+    com: Location of Job Vendor file
+    val: jobVendorSettings.tab
+Oracle settings:
+  USERNAME:
+    req: REQUIRED
+    com: Username for the claims database. 99% of the time you should NOT change this
+    val: claims_usr
+  PASSWORD:
+    req: REQUIRED
+    com: Password for the claims database. 99% of the time you should NOT change this
+    val: claims_usr123
+  INSTANCE:
+    req: REQUIRED
+    com: Instance for the claims database. 99% of the time you should NOT change this
+    val: pldwh2dbr
+  AGGREGATION_TABLE:
+    req: REQUIRED
+    com: Aggregation Table for the Aggregation process. 99% of the time you should
+      NOT change this
+    val: claims_aggr.pxdx_aggregations
+  CLAIM_PATIENT_TABLE:
+    req: REQUIRED
+    com: Claim Patient Table for the Aggregation process. 99% of the time you should
+      NOT change this
+    val: claims_aggr.pxdx_claim_patient_ratio
+MultiBucket settings:
+  ANALYSIS_TYPE:
+    req: REQUIRED
+    com: "Flag for running projections vs makefiles. If \"Projections\", will \
+      run projections. If \"Makefile\", will run makefiles. If \"QC\", will run QC step.\n\
+      # Note, you MUST run Projections first before running Makefile and you MUST \
+      run Makefile before running QC."
+    val: Projections
+  FXFILES:
+    req: OPTIONAL
+    com: Location of FXFiles for alternate SAS Code Bases. 99% of the time you should
+      NOT change this
+    val: ''
+  PRESERVE_SAS:
+    req: OPTIONAL
+    com: Flag for if you want to preserve your sas databases. "Y" to enable, all other
+      values will default to cleaning up sas files
+    val: ''
+  UPCASE_BUCKETS:
+    req: OPTIONAL
+    com: If you want to upcase your bucket name in your input file
+    val: ''
+  ADD_REF_OVERRIDE:
+    req: OPTIONAL
+    com: If you want option "AddRefDoc" to be yes for all buckets. "Y" to enable,
+      all other values will default to no
+    val: ''
+  CFG_TYPE:
+    req: REQUIRED
+    com: What type of job this settings.cfg file is for. DO NOT CHANGE THIS
+    val: PXDX
+  CFG_FILE_VERSION:
+    req: REQUIRED
+    com: Version of CFG files' layout. 99% of the time you should NOT change this
+    val: '3.3'
