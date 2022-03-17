@@ -1,0 +1,74 @@
+
+R version 3.1.2 (2014-10-31) -- "Pumpkin Helmet"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(ROracle)
+Loading required package: DBI
+> drv <- dbDriver("Oracle")
+> #do QC on newly received MEI data 
+> #Sudheer prepares wh_stage.mei_claim_counts
+> #allows code level comparison of last 2 Q to prior 2 Q
+> 
+> #set up the database connection
+> con <- dbConnect(drv, username = "wk_claims_usr", password = "w15c0u0b", dbname = "pldwhdbr")
+> 
+> #set up your query
+> myq1<-"select * from wh_stage.mei_claim_counts_new"
+> 
+> #executing the query
+> rs <- dbSendQuery(con, myq1)
+> data <- fetch(rs)
+> 
+> dbDisconnect(con)
+[1] TRUE
+> 
+> last2sum<-data$Q12014+data$Q22014
+> prior2sum<-data$Q32013+data$Q42013
+> 
+> idx<-which(is.na(last2sum))
+> if(length(idx) > 0) {
++  last2sum[idx]<-0.1
++ }
+> idx<-which(is.na(prior2sum))
+> if(length(idx) > 0) {
++  prior2sum[idx]<-0.1
++ }
+> 
+> pdf("compqc_meiQ1Q22014.pdf")
+> plot(prior2sum,last2sum,log="xy",pch=4,cex=.5,xlab="prior2Q",
++ ylab="new2Q")
+Warning messages:
+1: In xy.coords(x, y, xlabel, ylabel, log) :
+  77 x values <= 0 omitted from logarithmic plot
+2: In xy.coords(x, y, xlabel, ylabel, log) :
+  75 y values <= 0 omitted from logarithmic plot
+> lines(c(.1,1e7),c(.1,1e7),lwd=3,col="red")
+> dev.off()
+null device 
+          1 
+> 
+> 
+> 
+> #output the data to a file called data.txt
+> write.table(data,file="data_meiQ1Q22014.txt",col.names=T,row.names=F,quote=F,
++ sep="\t",na="")
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.274   0.094   1.661 
