@@ -1,0 +1,7 @@
+[‎5/‎31/‎2016 12:06 PM] Hopson, Ryan (RIS-KOP): 
+best way to rerun then is to use the cloning scripts with the vintage for the new all codes? (20160511, think?)
+[‎5/‎31/‎2016 12:07 PM] Mortimer, Emily (RIS-KOP): 
+you don't need to set anything back up - you'll basically just push it back into queue from the existing config directory.
+but you will need to change the project-level settings.cfg back from "QC" or "Makefile" to "Projections"
+depending on what step you were on
+
