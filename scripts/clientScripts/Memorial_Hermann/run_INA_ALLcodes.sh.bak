@@ -1,0 +1,66 @@
+date="2016_12_16"
+directory=/vol/cs/clientprojects/Memorial_Hermann/2016_12_08_MH_PxDxs
+
+
+for i in `cat /vol/cs/CS_PayerProvider/Ryan/utilities/MH/2016_Dec_buckets_to_filter.txt | cut -d "/" -f 7-9`
+do
+echo i: $i
+
+bucket=`echo $i | cut -d "/" -f 2`
+echo bucket: $bucket
+
+INA_path=/vol/cs/clientprojects/PxDxStandardizationTesting/QuarterlyAllCodes/Sep2016/INA_Expanded/AllCodes_PIIDtoPIID_Expanded/Comb
+
+test=`ls $INA_path/$date"_"$bucket/done.txt 2> /dev/null`
+[ "X$test" != "X" ] && printf "file $test already exists. filter for $i appears complete\n***********************\n\n" && continue
+
+cp /vol/cs/CS_PayerProvider/Ryan/utilities/MH/piidselectioninputs.txt /vol/cs/CS_PayerProvider/Ryan/utilities/MH/piidselectioninputs_"$bucket".txt
+
+sed -i s@"PATH_TO_REPLACE"@"$i"@g /vol/cs/CS_PayerProvider/Ryan/utilities/MH/piidselectioninputs_"$bucket".txt
+sed -i s@"BUCKET_NAME_TO_REPLACE"@"$bucket"@g /vol/cs/CS_PayerProvider/Ryan/utilities/MH/piidselectioninputs_"$bucket".txt
+
+Rscript /vol/cs/CS_PayerProvider/Ryan/R/makepiidlist_rdh.R /vol/cs/CS_PayerProvider/Ryan/utilities/MH/piidselectioninputs_"$bucket".txt $directory/$i
+
+echo "piidlist.txt written to $directory/$i"
+
+mkdir -p $INA_path/$date"_"$bucket
+
+echo INA: $INA_path/$date"_"$bucket
+
+type=Dx
+echo $bucket | grep -q "_Px_" && type=Px
+
+echo type: $type
+
+mkdir -p $INA_path/$date"_"$bucket
+
+template_location=$INA_path/$date"_"$bucket/filter_inputs.txt
+cp /vol/cs/CS_PayerProvider/Ryan/utilities/MH/templates/filter_inputs_updated_INA.txt $template_location
+
+echo "template location: $template_location"
+
+#replace placeholders
+sed -i s@'BUCKET_NAME_REPLACE'@"$bucket"@g $template_location
+sed -i s@'PIIDLIST_PATH_REPLACE'@"$directory/$i/piidlist.txt"@g $template_location
+sed -i s@'PATH_REPLACE'@"$i"@g $template_location
+
+echo "Running filter for $i"
+
+dir=`pwd`
+
+cd $INA_path/$date"_"$bucket
+nohup perl /home/drajagopalan/udrive/Network/DiagFocus/ABCode/terrfilter_new.pl $template_location >| "$bucket"_stderrout_filter 2>&1
+cd $dir
+
+printf "*****************\n\n"
+
+done
+
+
+
+
+
+
+
+
+

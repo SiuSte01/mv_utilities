@@ -1,0 +1,25 @@
+date="2016_12_16"
+directory=/vol/cs/clientprojects/Memorial_Hermann/2016_12_08_MH_PxDxs
+
+
+for i in `cat /vol/cs/CS_PayerProvider/Ryan/utilities/MH/2016_Dec_buckets_to_filter.txt | cut -d "/" -f 7-9`
+do
+echo i: $i
+
+continue
+
+bucket=`echo $i | cut -d "/" -f 2`
+echo bucket: $bucket
+
+INA_path=/vol/cs/clientprojects/PxDxStandardizationTesting/QuarterlyAllCodes/Sep2016/INA_Expanded/AllCodes_PIIDtoPIID_Expanded/Comb
+
+done
+
+
+
+
+
+
+
+
+
