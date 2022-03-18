@@ -177,6 +177,41 @@ proc sql;
 	group by hms_poid;
 quit;
 
+/* MODIFICATION 12/16/2016: add in EMD datapull step */
+proc sql;
+connect to oracle(user=&username. password=&password. path=&instance.); 
+	create table mylib.EMD_POIDCounts as
+	select *
+	from connection to oracle
+	(select org_id as hms_poid, 
+	&TOTAL_COUNT. as claim4d_total, 
+	&MDCR_COUNT. as claim4d_mcare
+	from &aggregation_table. 
+	where aggr_name='EMDUB_IP' and aggr_level = 'ORGLEVEL' and
+	job_id=&aggregation_id. and bucket_name=&bucket.
+	);	
+disconnect from oracle ; 
+quit ;
+
+data mylib.EMD_POIDCounts(drop=oldpoid);
+set mylib.EMD_POIDCounts(rename=(HMS_POID=OLDPOID));
+HMS_POID=put(OLDPOID,$10.);
+run;  
+
+/* remove blank POIDs and calculate POID counts */
+data mylib.Temp;
+set mylib.EMD_POIDCounts;
+if hms_poid ~= '';
+run;
+proc sql;
+	create table mylib.EMD_POIDCounts as
+	select hms_poid, 
+	sum(claim4d_total) as claim4d_total,
+	sum(claim4d_mcare) as claim4d_mcare
+	from mylib.Temp
+	group by hms_poid;
+quit;
+
 /* Get latest claim counts from aggr tables for bucket */
 %macro Get_State_Counts_HG(aggr_name=,xstate=,ytable=);
 
@@ -284,7 +319,7 @@ quit;
 /* All attribute-related code have been removed,
    now run at the project level (not bucket-level) in the POID prep process */
 
-/* Insert WK/State/CMS claim volume */
+/* Insert WK/EMD/State/CMS claim volume */
 proc sql;
 create table mylib.Temp as
 select a.*, b.claim4d_total as WK_total_4d, b.claim4d_mcare as WK_mcare_4d 
@@ -301,6 +336,161 @@ if  poid_class ~= 1 and WK_total_4d ~= .;
 keep HMS_POID wk_total_4d wk_mcare_4d;
 run;
 /* END MODIFICATION */
+
+proc sql;
+create table mylib.Temp1 as
+select a.*, b.source as State_source, b.claim4d_total as State_total_4d, b.claim4d_mcare as State_mcare_4d
+from mylib.Temp a
+left join mylib.State_POIDCounts b
+on a.HMS_POID=b.HMS_POID;
+quit;
+
+/* MODIFICATION 6/22/2016: add in State Poid Count step, extra steps */
+data State_POIDCounts;
+set mylib.Temp1(where=(HMS_POID~='MISSING'));
+if State_total_4d~=.;
+keep HMS_POID State_total_4d State_mcare_4d;
+run;
+
+/* figure out medicare fraction in state and WK ub data
+   output total, medicare, and fraction for both to a file
+   use fraction based on wk to make projections decision */
+
+data wkstate_POIDCounts;
+merge WK_POIDCounts State_POIDCounts;
+by HMS_POID;
+run;
+
+proc means data=wkstate_POIDCounts noprint nway sum;
+output out=allpayer_counts(drop=_type_ _freq_) sum=;
+run;
+
+/* initialize medicare fraction to absurd number in case no data exists */
+%let wk_med_fraction = 100;
+data mylib.IP_Med_Fraction;
+set allpayer_counts;
+wk_med_fraction=wk_mcare_4d/wk_total_4d;
+State_Med_Fraction=State_mcare_4d/State_total_4d;
+call symput('wk_med_fraction',wk_med_fraction);
+run;
+%put 'wk_med_fraction :' &wk_med_fraction;
+
+proc export data=mylib.IP_Med_Fraction outfile='IP_Med_Fraction_wk.txt' dbms=tab replace;
+run;
+
+/* MODIFICATION 12/16/2016: add in EMD step */
+proc sql;
+create table mylib.Temp_EMD as
+select a.*, b.claim4d_total as EMD_total_4d, b.claim4d_mcare as EMD_mcare_4d 
+from mylib.POID_Attributes_IP a
+left join mylib.EMD_POIDCounts b
+on a.HMS_POID=b.HMS_POID;
+quit;
+
+/****EMD poid counts***/
+data EMD_POIDCounts;
+set mylib.Temp_EMD(where=(HMS_POID~='MISSING'));
+if  poid_class ~= 1 and EMD_total_4d ~= .;
+keep HMS_POID emd_total_4d emd_mcare_4d;
+run;
+
+/**** Select highest count between WK & EMD ****/
+proc sort data=WK_POIDCounts;
+by HMS_POID;
+run;
+proc sort data=EMD_POIDCounts;
+by HMS_POID;
+run;
+
+/* Note: Leaving in the other methods for choosing counts in case we decide to change it later */
+%macro wkemd;
+data mylib.WKEMD_POIDCounts;
+merge WK_POIDCounts(in=a) EMD_POIDCounts(in=b);
+by HMS_POID;
+
+if a then WK = 1;
+else WK = 0;
+if b then EMD = 1;
+else EMD = 0;
+
+/*
+if a and b then do;
+	if wk_total_4d >= emd_total_4d then do;
+		switch_total_4d = wk_total_4d;
+		switch_mcare_4d = wk_mcare_4d;
+		choice = 'WK ';
+	end;
+	else do;
+		switch_total_4d = emd_total_4d;
+		switch_mcare_4d = emd_mcare_4d;
+		choice = 'EMD';
+	end;
+end;
+*/
+/*
+if a and b then do;
+	switch_total_4d = wk_total_4d;
+	switch_mcare_4d = wk_mcare_4d;
+	choice = 'WK ';
+end;
+*/
+if a and b then do;
+	if wk_total_4d >= emd_total_4d then do;
+		switch_total_4d = wk_total_4d;
+		switch_mcare_4d = wk_mcare_4d;
+		choice = 'WK ';
+	end;
+	else do;
+		switch_total_4d = emd_total_4d;
+		/* in case medicare fraction doesn't exist (set to 100) */
+		if &wk_med_fraction. = 100 then switch_mcare_4d = emd_mcare_4d;
+		else switch_mcare_4d = floor(emd_total_4d*&wk_med_fraction.);
+		choice = 'EMD';
+	end;
+end;
+
+else if a and not b then do;
+	switch_total_4d = wk_total_4d;
+	switch_mcare_4d = wk_mcare_4d;
+	choice = 'WK ';
+end;
+else if b and not a then do;
+	switch_total_4d = emd_total_4d;
+	switch_mcare_4d = emd_mcare_4d;
+	choice = 'EMD';
+end;
+/*
+else if b and not a then do;
+	switch_total_4d = emd_total_4d;
+	switch_mcare_4d = floor(emd_total_4d*&wk_med_fraction.);
+	choice = 'EMD';
+end;
+*/
+/*
+else if b and not a then do;
+	switch_total_4d = wk_total_4d;
+	switch_mcare_4d = wk_mcare_4d;
+	choice = 'WK ';
+end;
+*/
+
+run;
+%mend wkemd;
+%wkemd;
+
+/* Just go back to regular WK as the "switch" source to make it easier */
+data WK_POIDCounts;
+set mylib.WKEMD_POIDCounts;
+run;
+
+/* Create new "Temp" that contains some EMD counts */
+proc sql;
+create table mylib.Temp as
+select a.*, b.WK_total_4d, b.WK_mcare_4d, b.EMD_total_4d, b.EMD_mcare_4d, b.switch_total_4d, b.switch_mcare_4d   
+from mylib.POID_Attributes_IP a
+left join WK_POIDCounts b
+on a.HMS_POID=b.HMS_POID;
+quit;
 
 proc sql;
 create table mylib.Temp1 as
@@ -413,6 +603,10 @@ if WK_Listed = 1 then do;
 	if WK_total_4d = . then WK_total_4d = 0;
 	if WK_mcare_4d = . then WK_mcare_4d = 0;
 end;
+if EMD_Listed = 1 then do;
+	if EMD_total_4d = . then EMD_total_4d = 0;
+	if EMD_mcare_4d = . then EMD_mcare_4d = 0;
+end;
 if State_Listed = 1 then do;
 	if State_total_4d = . then State_total_4d = 0;
 	if State_mcare_4d = . then State_mcare_4d = 0;
@@ -460,6 +654,7 @@ also, if poid_class=1, then automatically set wk_valid to 0
 /* If one source is missing do the 2-source check on the other two */
 data mylib.POID_Counts;
 set mylib.POID_Counts;
+
 if wk_mcare_4d = . or poid_class = 1 then WK_valid = 0;
 else WK_valid = 1;
 if state_mcare_4d = . then State_valid = 0;
@@ -467,12 +662,25 @@ else State_valid = 1;
 if cms_total_4d = . then CMS_valid = 0;
 else CMS_valid = 1;
 
+if emd_mcare_4d = . or poid_class = 1 then EMD_valid = 0;
+else EMD_valid = 1;
+if switch_mcare_4d = . or poid_class = 1 then Switch_valid = 0;
+else Switch_valid = 1;
+
+/* Use these alt3 validity flags later */
+Switch_valid_alt3 = Switch_valid;
+State_valid_alt3 = State_valid;
+CMS_valid_alt3 = CMS_valid;
+
 if wk_mcare_4d ~= . and state_mcare_4d ~= . and cms_total_4d ~= .
 and (poid_class eq . or poid_class > 1) then do;
+
 	avg_mcare = (wk_mcare_4d + state_mcare_4d + cms_total_4d) / 3;
+
 	wk_dist = round(abs(wk_mcare_4d - avg_mcare),0.01);
 	st_dist = round(abs(state_mcare_4d - avg_mcare),0.01);
 	cms_dist = round(abs(cms_total_4d - avg_mcare),0.01);
+
 	if wk_dist > st_dist and wk_dist > cms_dist then do;
 		if wk_dist > 0.25 * avg_mcare then WK_valid = 0;       
 	end;
@@ -482,6 +690,7 @@ and (poid_class eq . or poid_class > 1) then do;
 	else if cms_dist > wk_dist and cms_dist > st_dist then do;
 		if cms_dist > 0.25 * avg_mcare then CMS_valid = 0;       
 	end;
+
 end;
 
 /* 2 source checks added below */
@@ -510,13 +719,90 @@ else if state_mcare_4d ~= . and cms_total_4d ~= . then do;
 	else if state_mcare_4d < 0.5*cms_total_4d then State_valid=0;
 end;
 
-myratio = wk_mcare_4d/cms_total_4d; /* Mark Note: ltos of division by zero here */
-drop avg_mcare wk_dist st_dist cms_dist;
+/* alt3 section with emd */
+if wk_mcare_4d ~= . and state_mcare_4d ~= . and cms_total_4d ~= . and (poid_class eq . or poid_class > 1) then do;
+
+	avg_mcare_alt3 = (wk_mcare_4d + state_mcare_4d + cms_total_4d) / 3;
+
+	switch_dist_alt3 = round(abs(wk_mcare_4d - avg_mcare_alt3),0.01);
+	st_dist_alt3 = round(abs(state_mcare_4d - avg_mcare_alt3),0.01);
+	cms_dist_alt3 = round(abs(cms_total_4d - avg_mcare_alt3),0.01);
+
+	if switch_dist_alt3 > st_dist_alt3 and switch_dist_alt3 > cms_dist_alt3 then do;
+		if switch_dist_alt3 > 0.25 * avg_mcare_alt3 then Switch_valid_alt3 = 0;       
+	end;
+	else if st_dist_alt3 > switch_dist_alt3 and st_dist_alt3 > cms_dist_alt3 then do;
+		if st_dist_alt3 > 0.25 * avg_mcare_alt3 then State_valid_alt3 = 0;       
+	end;
+	else if cms_dist_alt3 > switch_dist_alt3 and cms_dist_alt3 > st_dist_alt3 then do;
+		if cms_dist_alt3 > 0.25 * avg_mcare_alt3 then CMS_valid_alt3 = 0;       
+	end;
+
+end;
+
+else if switch_mcare_4d ~= . and state_mcare_4d ~= . and cms_total_4d ~= . and (poid_class eq . or poid_class > 1) then do;
+
+	avg_mcare_alt3 = (switch_mcare_4d + state_mcare_4d + cms_total_4d) / 3;
+
+	switch_dist_alt3 = round(abs(switch_mcare_4d - avg_mcare_alt3),0.01);
+	st_dist_alt3 = round(abs(state_mcare_4d - avg_mcare_alt3),0.01);
+	cms_dist_alt3 = round(abs(cms_total_4d - avg_mcare_alt3),0.01);
+
+	if switch_dist_alt3 > st_dist_alt3 and switch_dist_alt3 > cms_dist_alt3 then do;
+		if switch_dist_alt3 > 0.25 * avg_mcare_alt3 then Switch_valid_alt3 = 0;       
+	end;
+	else if st_dist_alt3 > switch_dist_alt3 and st_dist_alt3 > cms_dist_alt3 then do;
+		if st_dist_alt3 > 0.25 * avg_mcare_alt3 then State_valid_alt3 = 0;       
+	end;
+	else if cms_dist_alt3 > switch_dist_alt3 and cms_dist_alt3 > st_dist_alt3 then do;
+		if cms_dist_alt3 > 0.25 * avg_mcare_alt3 then CMS_valid_alt3 = 0;       
+	end;
+
+end;
+
+else if wk_mcare_4d ~= . and cms_total_4d ~= . and (poid_class eq . or poid_class > 1) then do;
+	/* tweaked the clause and the state one too
+	if wk_mcare_4d > 0 and wk_mcare_4d < 0.5*cms_total_4d then WK_valid=0; */
+	if wk_mcare_4d = 0 and cms_total_4d = 0 then Switch_valid_alt3=1;
+	else if wk_mcare_4d = 0 and wk_total_4d = 0 and cms_total_4d > 0 then Switch_valid_alt3=0;
+	else if wk_mcare_4d = 0 and wk_total_4d > 0 then do;
+		if wk_total_4d > cms_total_4d then Switch_valid_alt3=1;
+		else Switch_valid_alt3=0;
+	end;
+	else if wk_mcare_4d < 0.5*cms_total_4d then Switch_valid_alt3=0;
+end;
+
+else if switch_mcare_4d ~= . and cms_total_4d ~= . and (poid_class eq . or poid_class > 1) then do;
+	/* tweaked the clause and the state one too
+	if wk_mcare_4d > 0 and wk_mcare_4d < 0.5*cms_total_4d then WK_valid=0; */
+	if switch_mcare_4d = 0 and cms_total_4d = 0 then Switch_valid_alt3=1;
+	else if switch_mcare_4d = 0 and switch_total_4d = 0 and cms_total_4d > 0 then Switch_valid_alt3=0;
+	else if switch_mcare_4d = 0 and switch_total_4d > 0 then do;
+		if switch_total_4d > cms_total_4d then Switch_valid_alt3=1;
+		else Switch_valid_alt3=0;
+	end;
+	else if switch_mcare_4d < 0.5*cms_total_4d then Switch_valid_alt3=0;
+end;
+
+else if state_mcare_4d ~= . and cms_total_4d ~= . then do;
+	if state_mcare_4d = 0 and cms_total_4d = 0 then state_valid_alt3=1;
+	else if state_mcare_4d = 0 and state_total_4d = 0 and
+	cms_total_4d > 0 then state_valid_alt3 = 0;
+	else if state_mcare_4d = 0 and state_total_4d > 0 then do;
+		if state_total_4d > cms_total_4d then state_valid_alt3=1;
+		else state_valid_alt3 = 0;
+	end;
+	else if state_mcare_4d < 0.5*cms_total_4d then State_valid_alt3=0;
+end;
+
+myratio = wk_mcare_4d/cms_total_4d; /* Mark Note: lots of division by zero here */
+drop avg_mcare wk_dist st_dist cms_dist
+avg_mcare_alt3 switch_dist_alt3 st_dist_alt3 cms_dist_alt3;
 run;
 
 /* Select all-payer claim volume: State if exists, WK otherwise */
 /* Modification by Dilip - can use source only if valid_flag=1 */
-data mylib.POID_Counts;
+data POID_Counts_orig;
 set mylib.POID_Counts;
 if State_Listed = 1 and state_valid = 1 then do;
 	AllP_total_4d = State_total_4d;
@@ -531,6 +817,38 @@ else if WK_Listed = 1 and ( POID_class eq . or POID_class > 1) and WK_valid = 1 
 	allp_claim_source = 'WK';
 end;
 run;
+
+data POID_Counts_alt3;
+set mylib.POID_Counts;
+/* We're using new state validity flag since old flag tends to be 0 more often
+   and we don't want to use switch if medicare is too low, but we will still
+   use old state validity flag post-projection to choose delivery count */
+if State_Listed = 1 and state_valid_alt3 = 1 then do;
+	AllP_total_4d = State_total_4d;
+	AllP_mcare_4d = State_mcare_4d;
+	allp_claim_source = state;
+end;
+/* Dilip change to treat POID_class missing as better than 1 */
+else if (WK_Listed = 1 or EMD_Listed = 1) and ( POID_class eq . or POID_class > 1) and Switch_valid_alt3 = 1 then do;
+/* use WK claim only if POID is reliable i.e. POID_class > 1 */
+	AllP_total_4d = Switch_total_4d;
+	AllP_mcare_4d = Switch_mcare_4d;
+	allp_claim_source = 'Sw';
+end;
+run;
+
+%macro poid_counts_set;
+data mylib.POID_Counts;
+%if %upcase(&projectip) = N %then %do;
+set POID_Counts_orig;
+%end;
+%else %do;
+set POID_Counts_alt3;
+%end;
+run;
+%mend;
+
+%poid_counts_set;
 
 /* DEBUG save the poid counts dataset for inspection */
 data mylib.POID_Counts_Saved;
@@ -674,7 +992,7 @@ claim_exists = claim_actual ~= .;
 run; 
 
 /* Identify POIDs for GLMSelect procedure - from State or from WK with POID_class > 1, non-empty AHA fields */
-data mylib.POID_Counts;
+data POID_Counts_orig;
 set mylib.POID_Counts;
 length GLMSel_Role $ 10;
 /* Dilip change to treat POID_class missing as better than 1 */
@@ -683,6 +1001,29 @@ if (State_Listed = 1 or (WK_Listed = 1 and ( POID_class eq . or POID_class > 1))
 then GLMSel_Role = 'Eligible';
 else GLMSel_Role = 'None';
 run;
+
+data POID_Counts_alt3;
+set mylib.POID_Counts;
+length GLMSel_Role $ 10;
+/* Dilip change to treat POID_class missing as better than 1 */
+if (State_Listed = 1 or ((WK_Listed = 1 or EMD_Listed = 1) and ( POID_class eq . or POID_class > 1)) ) and
+(AHA_Cat_Empty = 0 and AHA_Num_Empty = 0 ) and allp_total_4d ~= .
+then GLMSel_Role = 'Eligible';
+else GLMSel_Role = 'None';
+run;
+
+%macro poid_counts_set;
+data mylib.POID_Counts;
+%if %upcase(&projectip) = N %then %do;
+set POID_Counts_orig;
+%end;
+%else %do;
+set POID_Counts_alt3;
+%end;
+run;
+%mend;
+
+%poid_counts_set;
 
 /* Split POID into two groups:: Estimation with nonzero claim count and Prediction with zero claim count */
 data mylib.Temp1;
@@ -1195,32 +1536,114 @@ run;
 
 
 /* Choose between actual and predicted claim volume to deliver */
-data mylib.POID_Prediction_GLM;
+data POID_Prediction_GLM_orig;
 set mylib.POID_Prediction_GLM;
 
 /* Nevada and TX state claims data does not allow us to vend their data to our customers */
-/* Also NJ after switching to HCUP purchase for 2012 data onwards - removing NJ 9/25/2019 based on Advisory Board acquisition of data */
+/* Also NJ after switching to HCUP purchase for 2012 data onwards */
 /* Set delivery to allpayer or CMS total count if no prediction can be made due to missing predictor variables */
 if claim_pred_GLM = . then do;
-	if State_valid = 1 and NOT(State_source in ('NV','TX')) then claim_dlvry = State_total_4d;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then claim_dlvry = State_total_4d;
 	else if WK_valid = 1 then claim_dlvry = WK_total_4d;
 	else if CMS_valid = 1 then claim_dlvry = CMS_total_4d;
 	else claim_dlvry = 0;
 end;
 else do;
-	if State_valid = 1 and NOT(State_source in ('NV','TX')) then  claim_dlvry = State_total_4d;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry = State_total_4d;
 	else if WK_valid = 1 then claim_dlvry = WK_total_4d;
-	/* constrain delivery to be at least equal to allpayer or CMS total count */
 	else if CMS_valid = 1 then claim_dlvry = max(CMS_total_4d,claim_pred_GLM);
 	else claim_dlvry = claim_pred_GLM;
 end;
 
+if claim_pred_GLM = . then do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry_used = 'State(nopred)';
+	else if WK_valid = 1 then claim_dlvry_used = 'WK(nopred)';
+	else if CMS_valid = 1 then claim_dlvry_used = 'CMS(nopred)';
+	else claim_dlvry_used = 'None(nopred)';
+end;
+else do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry_used = 'State';
+	else if WK_valid = 1 then claim_dlvry_used = 'WK';
+	else if CMS_valid = 1 and CMS_total_4d >= claim_pred_GLM then claim_dlvry_used = 'CMS(max)';
+	else if CMS_valid = 1 and CMS_total_4d < claim_pred_GLM then claim_dlvry_used = 'Pred(max)';
+	else claim_dlvry_used = 'None';
+end;
+
+claim_dlvry_usednew = claim_dlvry_used;
+drop claim_dlvry_used;
 run;
-	
+
+data POID_Prediction_GLM_alt3;
+length claim_dlvry_used $25.;
+set mylib.POID_Prediction_GLM;
+
+/* Nevada and TX state claims data does not allow us to vend their data to our customers */
+/* Also NJ after switching to HCUP purchase for 2012 data onwards */
+/* Set delivery to allpayer or CMS total count if no prediction can be made due to missing predictor variables */
+if claim_pred_GLM = . then do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then claim_dlvry = State_total_4d;
+	else if Switch_valid_alt3 = 1 then do;
+		if CMS_valid_alt3 = 1 then claim_dlvry = max(CMS_total_4d,Switch_total_4d);
+		else claim_dlvry = Switch_total_4d;
+	end;
+	else if CMS_valid_alt3 = 1 then claim_dlvry = CMS_total_4d;
+	else claim_dlvry = 0;
+end;
+else do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry = State_total_4d;
+	else if Switch_valid_alt3 = 1 then do;
+		if CMS_valid_alt3 = 1 then claim_dlvry = max(CMS_total_4d,claim_pred_GLM,Switch_total_4d);
+		else claim_dlvry = Switch_total_4d;
+	end;
+	/* constrain delivery to be at least equal to allpayer or CMS total count */
+	else if CMS_valid_alt3 = 1 then claim_dlvry = max(CMS_total_4d,claim_pred_GLM);
+	else claim_dlvry = claim_pred_GLM;
+end;
+
+if claim_pred_GLM = . then do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then claim_dlvry_used = 'State(nopred)';
+	else if Switch_valid_alt3 = 1 then do;
+		if CMS_valid_alt3 = 1 and CMS_total_4d >= Switch_total_4d then claim_dlvry_used = 'CMS(maxnopred)';
+		else if CMS_valid_alt3 = 1 and CMS_total_4d < Switch_total_4d then claim_dlvry_used = 'Switch(maxnopred)';
+		else claim_dlvry_used = 'Switch(nopred)';
+	end;
+	else if CMS_valid_alt3 = 1 then claim_dlvry_used = 'CMS(nopred)';
+	else claim_dlvry_used = 'None(nopred)';
+end;
+else do;
+	if State_valid = 1 and NOT(State_source in ('NV','TX','NJ')) then  claim_dlvry_used = 'State';
+	else if Switch_valid_alt3 = 1 then do;
+		if CMS_valid_alt3 = 1 and max(CMS_total_4d,claim_pred_GLM,Switch_total_4d) = CMS_total_4d then claim_dlvry_used = 'CMS(max)';
+		else if CMS_valid_alt3 = 1 and max(CMS_total_4d,claim_pred_GLM,Switch_total_4d) = claim_pred_GLM then claim_dlvry_used = 'Pred(max)';
+		else if CMS_valid_alt3 = 1 and max(CMS_total_4d,claim_pred_GLM,Switch_total_4d) = Switch_total_4d then claim_dlvry_used = 'Switch(max)';
+		else claim_dlvry_used = 'Switch';
+	end;
+	else if CMS_valid_alt3 = 1 and CMS_total_4d >= claim_pred_GLM then claim_dlvry_used = 'CMS(max)';
+	else if CMS_valid_alt3 = 1 and CMS_total_4d < claim_pred_GLM then claim_dlvry_used = 'Pred(max)';
+	else claim_dlvry_used = 'Pred';
+end;
+
+claim_dlvry_usednew = claim_dlvry_used;
+drop claim_dlvry_used;
+run;
+
+%macro GLM_set;
+data mylib.POID_Prediction_GLM;
+%if %upcase(&projectip) = N %then %do;
+set POID_Prediction_GLM_orig;
+%end;
+%else %do;
+set POID_Prediction_GLM_alt3;
+%end;
+run;
+%mend;
+
+%GLM_set;
+
 /* Output results in one table */
 data mylib.Facility_Counts_Output;
 set mylib.POID_Prediction_GLM (rename=(claim_pred_GLMSel=claim_GLMSel claim_pred_GLM=claim_GLM));
-keep hms_poid claim_actual claim_dlvry wk_mcare_4d state_mcare_4d cms_total_4d WK_valid State_valid CMS_valid POID_Class;
+keep hms_poid claim_actual claim_dlvry wk_mcare_4d state_mcare_4d cms_total_4d WK_valid State_valid CMS_valid POID_Class Switch_valid_alt3 CMS_valid_alt3;
 run;
 
 /* ****************** SAVE PLOTS IN PDF *********************** */
