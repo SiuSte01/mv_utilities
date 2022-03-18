@@ -1,4 +1,7 @@
+*archive*
 *Archive*
+*backup*
+*Backup*
 branchClones
 comparison_summary.txt
 CovariateUpdateProcess
@@ -7,6 +10,7 @@ diffInvest
 Documentation
 InputDataFiles*
 *Instructions*
+*.log
 *Old*
 old
 !OldvNew_Projections
@@ -17,6 +21,7 @@ rhopsonCode/un*
 rhopsonCode/utilities/[CEFHMTUVabcfgimprstuvwz]*
 rhopsonCode/utilities/qc_projections_archive
 scripts/clientScripts/Tea_Leaves/Delivery_File_Check/TL_Delivery_File_Check_*
+scripts/scripts/monitor_cms_order/*.txt
 scripts/scripts/QA_full_tab_PxDx/[NTb]*
 scripts/scripts/QA_full_tab_PxDx/*.docx
 scripts/scripts/QA_full_tab_PxDx/*.lnk
@@ -25,3 +30,4 @@ scripts/scripts/QA_full_tab_PxDx/*.lnk
 *test*
 TL
 unprojected_raw_claims
+*.zip
