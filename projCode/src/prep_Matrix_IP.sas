@@ -31,6 +31,7 @@ data _null_;
 
   if Parameter eq 'VINTAGE' then call symput('Vintage', trim(left(compress(value))));
   if Parameter EQ 'FXFILES'  then call symput('fxfiles', trim(left(compress(value))));
+  if Parameter eq 'PROJDIR'  then call symput('projdir', trim(left(compress(value))));
   if Parameter eq 'USERNAME' then call symput('USERNAME', trim(left(compress(value))));
   if Parameter eq 'PASSWORD' then call symput('PASSWORD', trim(left(compress(value))));
   if Parameter eq 'INSTANCE' then call symput('INSTANCE', trim(left(compress(value))));
@@ -43,6 +44,7 @@ data _null_;
 /* Set up libnames */
 libname fxfiles %unquote(%str(%'&FXFILES%'));
 libname claim '.';
+libname projdir %unquote(%str(%'&PROJDIR%'));
 libname profile oracle user = claims_usr password = claims_usr123 path = PLDWH2DBR SCHEMA = profileData;
 
 /* Select POIDs with valid claims */
@@ -66,6 +68,131 @@ proc sql;
   disconnect from oracle;
   quit;
 %put &sqlxmsg ;
+
+/* MODIFICATION 12.16.2019: Adding in Emdeon POIDs for testing */
+/* Add EMD POIDs to be filtered */
+proc sql;
+  connect to oracle( user = &USERNAME password = &PASSWORD path = &INSTANCE);
+  
+  create table ip_poids_emd as select * from connection to oracle
+    ( select distinct h.id_value as HMS_POID 
+        from claimswh.inst_claims a
+           inner join claimswh.facility_id_crosswalk h on a.facility_id=h.facility_id
+           inner join claimswh.bill_classifications b on a.bill_classification_id = b.bill_classification_id
+           inner join claims_aggr.job_vendors v on a.vendor_id=v.vendor_id
+         where v.job_id = &AGGREGATION_ID 
+		   and ( a.claim_through_date between v.first_vend_date and v.last_vend_date )
+           and a.load_batch <= v.last_vend_batch   
+           and h.id_type='POID'
+           and ( to_date(%unquote(%str(%'&Vintage%')), 'YYYYMMDD' ) between h.start_date and h.end_date )
+           and v.vendor_code='EMD' and b.classification_code='011' );
+  disconnect from oracle;
+  quit;
+
+proc sort data=ip_poids_emd;
+by HMS_POID;
+run;
+proc sort data=ip_poids out=ip_poids_norm(keep=HMS_POID);
+by HMS_POID;
+run;
+
+data ip_poids_emd1;
+merge ip_poids_norm(in=a) ip_poids_emd(in=b);
+by HMS_POID;
+if b and not a;
+run;
+
+/* Add WK list to POID table */
+data ip_poids_list1;
+merge ip_poids_emd1(in=matrix) /* MODIFICATION 6/22/2016: change to project directory */
+projdir.WK_POIDList(in=WK);
+by HMS_POID;
+if matrix=1;
+if WK=1 then WK_Listed=1;
+else WK_Listed=0;
+run;
+/* Add State list to POID table */
+data Temp;
+merge ip_poids_list1(in=matrix) 
+projdir.State_POIDList(in=Statee);
+by HMS_POID;
+if matrix=1;
+if Statee=1 then State_Listed=1;
+else State_Listed=0;
+run;
+/* Add CMS list to POID table */
+data ip_poids_list1;
+merge Temp(in=Main) projdir.CMS_POIDList(in=CMS);
+by HMS_POID;
+if Main=1;
+if CMS=1 then CMS_Listed=1;
+else CMS_Listed=0;
+run;
+
+/* grab AHA logic from aha_demo table */
+proc sql;
+create table aha_demo1 as select x.HMS_POID, b.*
+from ip_poids_list1 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &vintage. and x.ID_TYPE = 'AHA'
+left join fxfiles.aha_demo b on x.value = b.id
+;
+quit;
+
+proc sort data = ip_poids_list1;
+by HMS_POID;
+run;
+proc sort data = aha_demo1;
+by HMS_POID;
+run;
+
+data ip_poids_list2;
+merge ip_poids_list1(in=a) aha_demo1(in=b);
+by HMS_POID;
+if a;
+if b then AHA_Listed = 1;
+else AHA_listed = 0;
+run;
+
+/* Add POS List */
+proc sql;
+create table pos_demo1 as select a.HMS_POID, x.VALUE as POS_ID, x.RANK
+from ip_poids_list2 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &vintage. and x.ID_TYPE = 'POS'
+;
+quit;
+
+proc sort data=pos_demo1 nodupkey;
+by HMS_POID;
+run;
+
+data ip_poids_list3;
+merge ip_poids_list2(in=a) pos_demo1(in=b keep=HMS_POID);
+by HMS_POID;
+if a;
+if b then POS_Listed = 1;
+else POS_listed = 0;
+run;
+
+/* Filter down to listed POIDs */
+data ip_poids_emd2;
+set ip_poids_list3;
+where WK_Listed = 0 and State_Listed = 0 and CMS_Listed = 0
+and (AHA_Listed = 1 or POS_Listed = 1);
+keep HMS_POID vendor_code;
+run;
+
+data claim.ip_poids;
+set ip_poids ip_poids_emd2;
+run;
+
+data ip_poids;
+set claim.ip_poids;
+run;
+
+/************************************** End of modification **************************************/
+
 
 proc sort data = ip_poids( where = ( hms_poid ^= ' ' ) ) out = ip_poids nodupkey; by hms_poid; run;
 
@@ -207,7 +334,7 @@ proc sort data = claim.ip_datamatrix nodupkey; by hms_poid; run;
      -- Differs from old version because only uses one ORG_NAME */
 %macro splitmatrix();
   %if %upcase(&SPLITIPMATRIX) = Y %then %do;
-  
+
     data claim.ip_matrix_nonChild claim.ip_matrix_child;
       merge claim.ip_datamatrix ( in = a ) fxfiles.pediatric_hospitals_&vintage. ( in = b );
       by hms_poid;
