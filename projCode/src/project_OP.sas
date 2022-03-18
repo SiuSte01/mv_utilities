@@ -129,7 +129,7 @@ data claim.&src._op;
   by HMS_POID;
   if a and not b and not c then output;
   run;
-  
+
 %mend;
 
 %piidcnt(src=WKUB, aggrname='WKUB_OP');
@@ -138,6 +138,8 @@ data claim.&src._op;
 %piidcnt(src=NY,   aggrname='NY_OP');
 %piidcnt(src=FL,   aggrname='FL_OP');
 %piidcnt(src=NJ,   aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's aggrement allows them to report counts */
+%piidcnt(src=EMDUB, aggrname='EMDUB_OP');
+
 
 data claim.WKUB_op_migs;
 set claim.WKUB_op;
@@ -156,6 +158,10 @@ set claim.fl_op claim.ny_op claim.nj_op;
 if hms_piid='MISSING' then hms_piid='MISSINGDOC';
 run;
 quit;
+data claim.EMDUB_op_migs;
+set claim.EMDUB_op;
+if hms_piid='MISSING' then hms_piid='MISSINGDOC';
+run;
 
 /* This part comes form factor.sas */
 %macro payer(src=, aggrname=);
@@ -192,6 +198,7 @@ data claim.&src._payer;
 %payer(src=CMS,  aggrname='CMS_OP');
 %payer(src=WKUB, aggrname='WKUB_OP');
 %payer(src=WKMX, aggrname='WKMX_OP');
+%payer(src=EMDUB, aggrname='EMDUB_OP');
 
 /* This part comes from opclaims_adj.sas - macros possibly used in oppred macro */
 %macro poidcnt(src=, aggrname=);
@@ -231,6 +238,7 @@ quit;
 %poidcnt(src=NJ,    aggrname='NJ_OP');  /* 9/25/2019 - Adding NJ since AB's agreement allows them to report counts */
 %poidcnt(src=WKMX,  aggrname='WKMX_OP');
 %poidcnt(src=WKUB,  aggrname='WKUB_OP');
+%poidcnt(src=EMDUB,  aggrname='EMDUB_OP');
 
 /*CA and NJ now only available for AB (all other aggregations will be empty), so removing conditional logic and adding NJ */
 data claim.state_op_poid_migs;
@@ -239,12 +247,27 @@ run;
 
 /***change: 12/16/2016 do poid level first to determine which source to use at piidpoid level**/
 
-proc sort data=claim.wkub_op_poid_migs out=ubop;
+proc sort data=claim.wkub_op_poid_migs out=wkubop;
 by hms_poid ;
 run;
 
-proc sort data=claim.wkmx_op_poid_migs out=mxop;
+proc sort data=claim.wkmx_op_poid_migs out=wkmxop;
 by hms_poid ;
+run;
+
+/* Restrict EMD OP to what's in the datamatrix */
+proc sort data=claim.emdub_op_poid_migs out=emdub;
+by hms_poid ;
+run;
+
+proc sort data=matrloc.op_datamatrix out=demo_poid(keep=HMS_POID);
+by hms_poid;
+run;
+
+data emdubop;
+merge emdub(in=a) demo_poid(in=b);
+by HMS_POID;
+if a and b;
 run;
 
 /****no MX claims for AdvisoryBoard***/;
@@ -252,10 +275,17 @@ run;
 %if %upcase(&CODETYPE)= AB %then %do;
 
 data claim.wk_op_poid_migs;
-length source $4.;
-set ubop(rename=(&counttype._count=wkub_count)) ;
-wk_count=wkub_count;
-source='wkub';
+length source $5.;
+merge wkubop(rename=(&counttype._count=wkub_count)) emdubop(rename=(&counttype._count=emdub_count));
+by hms_poid ;
+if max(wkub_count, emdub_count)=wkub_count then do;
+	wk_count=wkub_count;
+	source='wkub';
+end;
+else do;
+	wk_count=emdub_count;
+	source='emdub';
+end;
 run;
 
 %end;
@@ -267,24 +297,28 @@ proc sort data = matrloc.asc_datamatrix out = asc_matrix; by HMS_POID; run;
 proc sort data = fxfiles.asc_poids_&Vintage. out = asc_poids; by HMS_POID; run;
 */
 
-data mxop_clean;
-  merge mxop ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
+data wkmxop_clean;
+  merge wkmxop ( in = a ) asc_matrix ( in = b ) asc_poids ( in = c );
   by HMS_POID;
   if a and not b and not c then output;
   run;
 
 data claim.wk_op_poid_migs;
-length source $4.;
-merge ubop(rename=(&counttype._count=wkub_count)) mxop_clean(rename=(&counttype._count=wk1500_count));
+length source $5.;
+merge wkubop(rename=(&counttype._count=wkub_count)) emdubop(rename=(&counttype._count=emdub_count)) wkmxop_clean(rename=(&counttype._count=wk1500_count));
 by hms_poid ;
-if max(wkub_count, wk1500_count)=wkub_count then do;
+if max(wkub_count, wk1500_count, emdub_count)=wkub_count then do;
 	wk_count=wkub_count;
 	source='wkub';
 end;
-else do;
+else if max(wkub_count, wk1500_count, emdub_count)=wk1500_count then do;
 	wk_count=wk1500_count;
 	source='wkmx';
-end;	
+end;
+else do;
+	wk_count=emdub_count;
+	source='emdub';
+end;
 run;
 
 %end;
@@ -293,16 +327,20 @@ proc sort data=claim.wk_op_poid_migs out=poid_source(keep=hms_poid source) nodup
 by hms_poid;
 run;
 
-proc sort data=claim.wkub_op_migs out=ubop;
+proc sort data=claim.wkub_op_migs out=wkubop;
 by hms_poid hms_piid;
 run;
 
-proc sort data=claim.wkmx_op_migs out=mxop;
+proc sort data=claim.wkmx_op_migs out=wkmxop;
+by hms_poid hms_piid;
+run;
+
+proc sort data=claim.emdub_op_migs out=emdubop;
 by hms_poid hms_piid;
 run;
 
 data wk_op_migs;
-merge ubop(rename=(&counttype._count=wkub_count)) mxop(rename=(&counttype._count=wk1500_count)) ;
+merge wkubop(rename=(&counttype._count=wkub_count)) wkmxop(rename=(&counttype._count=wk1500_count)) emdubop(rename=(&counttype._count=emdub_count)) ;
 by hms_poid hms_piid;
 run;
 
@@ -316,15 +354,19 @@ by hms_poid;
 
 if source='wkub' then do;
 	if wkub_count^=. then wk_count=wkub_count;
-	else wk_count=max(wk1500_count,wkub_count);
-	output;
+	else wk_count=max(wk1500_count,wkub_count,emdub_count);
 end;
 
 else if source='wkmx' then do;
 	if wk1500_count^=. then wk_count=wk1500_count;
-	else wk_count=max(wk1500_count,wkub_count);
-	output;
+	else wk_count=max(wk1500_count,wkub_count,emdub_count);
 end;
+
+else if source='emdub' then do;
+	if emdub_count^=. then wk_count=emdub_count;
+	else wk_count=max(wk1500_count,wkub_count,emdub_count);
+end;
+
 run;
 %mend;
 
@@ -676,7 +718,9 @@ proc sort data=claim.wkub_payer ;
 by hms_poid ;
 run;
 
-
+proc sort data=claim.emdub_payer ;
+by hms_poid ;
+run;
 
 /****change: not include wkmx at facility level****/;
 /* Removing conditional logic so that AB gets CA - since no other clients will have CA data, this will have no effect.  
@@ -692,11 +736,12 @@ run;
 data claim.facility_counts_output(keep=hms_poid claim_dlvry);
 merge proj_cms
 	  claim.wkub_payer(keep=hms_poid all_counts rename=(all_counts=wk_count ))
+	  claim.emdub_payer(keep=hms_poid all_counts rename=(all_counts=emd_count ))
 	  claim.state_payer(keep=hms_poid all_counts rename=(all_counts=state_count ));
 	
 by hms_poid ;
 
-	claim_dlvry=max(proj_cms, state_count, wk_count);
+	claim_dlvry=max(proj_cms, state_count, wk_count, emd_count);
 run;
 
 
@@ -728,12 +773,21 @@ proc sort data=claim.wkub_op_migs(where=(hms_piid^='MISSINGDOC')) out= wkub_op_m
 by hms_poid hms_piid ;
 run;
 
+proc sort data=claim.emdub_op_migs(where=(hms_piid^='MISSINGDOC')) out= emdub_op_migs ;
+by hms_poid hms_piid ;
+run;
+
 proc sort data=claim.wkmx_op_migs(where=(hms_piid^='MISSINGDOC')) out= wkmx_op_migs ;
 by hms_poid hms_piid ;
 run;
 
 proc sort data=claim.wkub_op_migs(where=(hms_piid='MISSINGDOC') ) 
 	out=wkub_piid_miss(drop=hms_piid rename=(&CountType._count=wkub_count_miss ));
+by hms_poid  ;
+run;
+
+proc sort data=claim.emdub_op_migs(where=(hms_piid='MISSINGDOC') ) 
+	out=emdub_piid_miss(drop=hms_piid rename=(&CountType._count=emdub_count_miss ));
 by hms_poid  ;
 run;
 
@@ -748,13 +802,14 @@ by hms_poid  ;
 run;
 
 data allpayer_miss(keep=hms_poid allpayer_miss) ;
-merge state_piid_miss wkub_piid_miss ;
+merge state_piid_miss wkub_piid_miss emdub_piid_miss;
 by hms_poid;
 
 if state_count_miss=. then state_count_miss=0;
 if wkub_count_miss=. then wkub_count_miss=0;
+if emdub_count_miss=. then emdub_count_miss=0;
 
-  allpayer_miss=max(state_count_miss, wkub_count_miss);
+  allpayer_miss=max(state_count_miss, wkub_count_miss, emdub_count_miss);
 run;
 
 proc sort data=allpayer_miss;
@@ -763,6 +818,7 @@ run;
 
 data allpayer_piidatpoid;
 merge wkub_op_migs(where=(hms_poid^='MISSING') rename=(&counttype._count=wkub_count &counttype._fraction=wkub_fraction ))
+	  emdub_op_migs(where=(hms_poid^='MISSING') rename=(&counttype._count=emdub_count &counttype._fraction=emdub_fraction ))
 	  state_op_migs(where=(hms_poid^='MISSING') rename=(&counttype._count=state_count &counttype._fraction=state_fraction))
 	  wkmx_op_migs(where=(hms_poid^='MISSING') rename=(&counttype._count=wkmx_count &counttype._fraction=wkmx_fraction ));
 	
@@ -814,22 +870,27 @@ run;
 data allpayer_piidatpoid2(drop= claim_dlvry);
 set allpayer_piidatpoid1(in=a) ;
 
-if max(state_count,  wkub_count,  wkmx_count)=state_count then do;
+if max(state_count,  wkub_count,  emdub_count,  wkmx_count)=state_count then do;
 			allpayer_count=state_count ;
 			allpayer_fraction=state_fraction;
 		end;
 
-	    else if max(state_count,  wkub_count,  wkmx_count)=wkub_count then do;
+	    else if max(state_count,  wkub_count,  emdub_count,  wkmx_count)=wkub_count then do;
 			allpayer_count=wkub_count ;
 			allpayer_fraction=wkub_fraction;
 		end;
 
-		else if max(state_count, wkub_count, wkmx_count)=wkmx_count then do;
+	    else if max(state_count,  wkub_count,  emdub_count,  wkmx_count)=emdub_count then do;
+			allpayer_count=emdub_count ;
+			allpayer_fraction=emdub_fraction;
+		end;
+
+		else if max(state_count, wkub_count, emdub_count,  wkmx_count)=wkmx_count then do;
 			allpayer_count=wkmx_count ;
 			allpayer_fraction=wkmx_fraction;
 		end;
 
-	    else if max(state_count, wkub_count, wkmx_count, 0)=0 then do;
+	    else if max(state_count, wkub_count, emdub_count,  wkmx_count, 0)=0 then do;
 			allpayer_count=0 ;
 			allpayer_fraction=0;
 		end;
@@ -1588,10 +1649,41 @@ proc sort data=claim.state_payer(where=(hms_poid^='MISSING')) out=state_op;
 by hms_poid;
 run;
 
-data factor_op;
-merge wk_op(in=w) state_op(in=s);
+proc sort data=claim.emdub_payer(where=(hms_poid^='MISSING')) out=emd_op;
 by hms_poid;
-if s or (not s and w);
+run;
+
+/* Merge WK and EMD together - choose counts based on which is bigger */
+data switch_op;
+merge emd_op(in=a rename=(med_counts=med_counts_emd all_counts=all_counts_emd)) wk_op(in=b rename=(med_counts=med_counts_wk all_counts=all_counts_wk));
+by hms_poid;
+
+if a and b then do;
+	if all_counts_wk >= all_counts_emd then do;
+		med_counts = med_counts_wk;
+		all_counts = all_counts_wk;
+	end;
+	else do;
+		med_counts = med_counts_emd;
+		all_counts = all_counts_emd;
+	end;
+end;
+else if a and not b then do;
+	med_counts=med_counts_emd;
+	all_counts=all_counts_emd;
+end;
+else if b and not a then do;
+	med_counts=med_counts_wk;
+	all_counts=all_counts_wk;
+end;
+
+drop med_counts_wk all_counts_wk med_counts_emd all_counts_emd;
+run;
+
+data factor_op;
+merge switch_op(in=we) state_op(in=s);
+by hms_poid;
+if s or (not s and we);
 
 medcapture=round(med_counts/all_counts,0.0001);
 
@@ -1836,8 +1928,9 @@ run;
 
 %put 'error': &error;
 %put 'final_error': &error;
+options nosyntaxcheck; /* MODIFICATION 10.28.2021: prevents SAS from killing program due to error */
 
-%macro error_choose;
+%macro error_choose(est=); /* MODIFICATION 10.28.2021: added robustreg option as macro parameter */
 
 %if &error = 2 | &error = 3 | &error = 4 | &error = 5 | &error = 7 | &error = 8 %then %do;
 
@@ -1950,7 +2043,7 @@ run;
 
 ods graphics on;
 ods output ParameterEstimates = work.ParameterEstimates;
-proc robustreg data=claim.model_op method=mm outest=robust;
+proc robustreg data=claim.model_op method=mm(initest=&est.) outest=robust;
 model y = U65Pct MAPenet TactInsField Unemp
 / leverage;
 output out=POID_Prediction p=log_claim_pred;
@@ -1958,6 +2051,7 @@ run;
 quit;
 ods output close;
 ods graphics off;
+options obs=max; /* MODIFICATION 10.28.2021: prevents SAS from resetting to null datasets */
 
 data good_robust;
 set ParameterEstimates;
@@ -2114,18 +2208,32 @@ run;
 
 %mend;
 
-%error_choose;
+%error_choose(est=LTS);
 
+/* MODIFICATION 10.28.2021: if robust fails to create LTS estimate, use S estimate instead */
+%put &syserr.;
+
+%macro error_choose_robust_S;
+%if &syserr. ne 0 %then %do;
+
+%error_choose(est=S);
+
+%end;
+%mend;
+
+%error_choose_robust_S;
 
 
 /* MODIFICATION 3.18.2018: New file formats */
+/* MODIFICATION 9.28.2020: Change to dedup method */
 
 data temp;
 set output2;
-if HMS_POID = '' then HMS_POID = 'MISSING';
-if HMS_PIID = '' then HMS_PIID = 'MISSING';
+*if HMS_POID = '' then HMS_POID = 'MISSING';
+*if HMS_PIID = '' then HMS_PIID = 'MISSING';
 run;
 
+/*
 proc means data=temp nway sum noprint;
 class HMS_PIID / missing;
 var PractFacProjCount;
@@ -2142,6 +2250,34 @@ proc means data=temp nway sum noprint;
 class HMS_PIID HMS_POID / missing;
 var PractFacProjCount;
 output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+*/
+
+proc sort data=temp nodupkey out=prac_proj(keep=HMS_PIID PractNatlProjCount);
+by HMS_PIID;
+run;
+data prac_proj;
+set prac_proj;
+COUNT = PractNatlProjCount;
+drop PractNatlProjCount;
+run;
+
+proc sort data=temp nodupkey out=org_proj(keep=HMS_POID FacProjCount);
+by HMS_POID;
+run;
+data org_proj;
+set org_proj;
+COUNT = FacProjCount;
+drop FacProjCount;
+run;
+
+proc sort data=temp nodupkey out=prac_org_proj(keep=HMS_PIID HMS_POID PractFacProjCount);
+by HMS_PIID HMS_POID;
+run;
+data prac_org_proj;
+set prac_org_proj;
+COUNT = PractFacProjCount;
+drop PractFacProjCount;
 run;
 
 proc export data=prac_proj outfile='prac_proj.txt' replace;
