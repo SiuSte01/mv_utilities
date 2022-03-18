@@ -14,6 +14,8 @@ libname claim '.';
 
 /* Set together results from children's facilities (no Medicare) with results from non-children's facilities */
 data claim.facility_counts_output;
-  set nchild.facility_counts_output child.facility_counts_output;
+  set nchild.facility_counts_output child.facility_counts_output(in=a);
+  if a then child_flag = 1;
+  else child_flag = 0;
   run;
 
