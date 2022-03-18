@@ -154,7 +154,7 @@ data _null_;
    in order to run different code depending on values of variables that are set in input.txt */ 
 %macro complete_ip_projection();
 
-  /* Get raw data from wkub, wkmx, cms, and state - adding NJ here 9/25/2019 since Advisory Board can now get counts */
+  /* Get raw data from wkub, wkmx, cms, and state */
   %count(src=WKUB, aggrname='WKUB_IP');
   %count(src=WKMX, aggrname='WKMX_IP');
   %count(src=CMS,  aggrname='CMS_IP');
@@ -163,12 +163,17 @@ data _null_;
   %count(src=WA,   aggrname='WA_IP');
   %count(src=AZ,   aggrname='AZ_IP');
   %count(src=NJ,   aggrname='NJ_IP');
+  %count(src=EMDUB, aggrname='EMDUB_IP');
 
-  
   /* Create "migs" version of dataset where if PIID is labeled as MISSING, set it to MISSINGDOC 
      Set state data together into one dataset */
   data claim.WKUB_ip_migs;
     set claim.WKUB_ip;
+    if hms_piid='MISSING' then hms_piid='MISSINGDOC';
+    run;
+
+  data claim.EMDUB_ip_migs;
+    set claim.EMDUB_ip;
     if hms_piid='MISSING' then hms_piid='MISSINGDOC';
     run;
 
@@ -209,31 +214,77 @@ data _null_;
     by hms_poid;
     run;
 	
+  /* EMD Institutional Claims at PIID@POID level - remove missing Practitioners */
+  proc sort data = claim.emdub_ip_migs ( where = ( hms_piid ^= 'MISSINGDOC' ) ) out = emdub_ip_migs;
+    by hms_poid hms_piid ;
+    run;
+
+  /* EMD Institutional Claims with missing Practitioners */
+  proc sort data = claim.emdub_ip_migs ( where = ( hms_piid = 'MISSINGDOC' ) ) 
+    out = emdub_piid_miss ( rename = ( &counttype._count = emdub_count_miss ) );
+    by hms_poid;
+    run;
+/*
+data switchub_piid_miss;
+merge wkub_piid_miss emdub_piid_miss;
+by HMS_POID;
+	if wkub_count_miss >= emdub_count_miss then switchub_count_miss = wkub_count_miss;
+	else switchub_count_miss = emdub_count_miss;
+run;
+*/
   /* Get Projected Facility Level Counts from SAS Output */
   proc sort data = claim.facility_counts_output out = facility_counts_output;
     by hms_poid;          
     run;
 
+  %if %unquote(%str(%'&CODETYPE%')) ~= 'ALL' %then %do;
+  data facility_counts_output;
+    set facility_counts_output;
+    child_flag = 0;
+  run;
+  %end;
+
+
   /* Merge together All Payer data [State, WK] with missing Practitioner with Facility Counts */	
   data allpayer_miss ( keep = hms_poid allpayer_miss );
     merge state_piid_miss 
 	      wkub_piid_miss 
-		  facility_counts_output ( in = a keep = hms_poid POID_Class wk_valid state_valid );
+	      emdub_piid_miss 
+		  facility_counts_output ( in = a keep = hms_poid POID_Class wk_valid state_valid Switch_valid_alt3 CMS_valid_alt3 child_flag);
     by hms_poid;
-
-	/* If POID is on Facility Counts and (1) both WK and State data is valid OR (2) State is valid and POID_Class is 1 [poor capture compared to AHA data]
-	   then All Payer Missing number is the maximum of the State Missing and the WK Institutional Claims Missing */
-    if (wk_valid=1 and state_valid =1) or (state_valid=1 and wk_valid=0 and POID_Class=1 )  then allpayer_miss=max(state_count_miss, wkub_count_miss);
 	
-    /* Else if POID is on Facility Counts and WK is not Valid but State is then All Payer Missing is the State Missing Value */	
-    else if wk_valid in (0,.) and state_valid=1 then allpayer_miss=state_count_miss;
-
-	/* Else if POID is on Facility Counts and (1) WK is Valid and State is not OR (2) Neither WK nor State are valid but POID_Class = 1 
-	   the All Payer Missing number is the WK Institutional Claims Missing */
-	else if (wk_valid=1 and state_valid in (0,.)) or (state_valid in (0,.) and wk_valid=0 and POID_Class=1 )  then allpayer_miss=wkub_count_miss;
+	if child_flag = 1 then do;
+		/* If POID is on Facility Counts and (1) both WK and State data is valid OR (2) State is valid and POID_Class is 1 [poor capture compared to AHA data]
+		then All Payer Missing number is the maximum of the State Missing and the WK Institutional Claims Missing */
+    	if (wk_valid=1 and state_valid =1) or (state_valid=1 and wk_valid=0 and POID_Class=1 )  then allpayer_miss=max(state_count_miss, wkub_count_miss, emdub_count_miss);
 	
-	/* Else All Payer Missing Number is Missing */
-    else allpayer_miss=.;
+    	/* Else if POID is on Facility Counts and WK is not Valid but State is then All Payer Missing is the State Missing Value */	
+    	else if wk_valid in (0,.) and state_valid=1 then allpayer_miss=state_count_miss;
+
+		/* Else if POID is on Facility Counts and (1) WK is Valid and State is not OR (2) Neither WK nor State are valid but POID_Class = 1 
+		the All Payer Missing number is the WK Institutional Claims Missing */
+		else if (wk_valid=1 and state_valid in (0,.)) or (state_valid in (0,.) and wk_valid=0 and POID_Class=1 )  then allpayer_miss=max(wkub_count_miss, emdub_count_miss);
+	
+		/* Else All Payer Missing Number is Missing */
+    	else allpayer_miss=.;
+	end;
+
+	else do;
+		/* If POID is on Facility Counts and (1) both WK and State data is valid OR (2) State is valid and POID_Class is 1 [poor capture compared to AHA data]
+		then All Payer Missing number is the maximum of the State Missing and the WK Institutional Claims Missing */
+    	if (Switch_valid_alt3=1 and state_valid =1) or (state_valid=1 and Switch_valid_alt3=0 and POID_Class=1 )  then allpayer_miss=max(state_count_miss, wkub_count_miss, emdub_count_miss);
+	
+    	/* Else if POID is on Facility Counts and WK is not Valid but State is then All Payer Missing is the State Missing Value */	
+    	else if Switch_valid_alt3 in (0,.) and state_valid=1 then allpayer_miss=state_count_miss;
+
+		/* Else if POID is on Facility Counts and (1) WK is Valid and State is not OR (2) Neither WK nor State are valid but POID_Class = 1 
+		the All Payer Missing number is the WK Institutional Claims Missing */
+		else if (Switch_valid_alt3=1 and state_valid in (0,.)) or (state_valid in (0,.) and Switch_valid_alt3=0 and POID_Class=1 )  then allpayer_miss=max(wkub_count_miss, emdub_count_miss);
+	
+		/* Else All Payer Missing Number is Missing */
+    	else allpayer_miss=.;
+	end;
+
     run;
 
   /* Code was modified to filter physicians in certain specialties based on flag set by input.txt file */
@@ -280,8 +331,9 @@ data _null_;
   /* Create dataset with All Payer (State and WK Organizational and Professional) data at PIID, POID Level */
   data allpayer_piidatpoid;
     merge wkub_ip_migs ( where = ( hms_poid ^ = 'MISSING' ) rename = ( &counttype._count = wkub_count &counttype._fraction = wkub_fraction ) )
-	      state_ip_migs( where = ( hms_poid ^= 'MISSING' ) rename = ( &counttype._count = state_count &counttype._fraction = state_fraction ) )
-	      wkmx_ip_migs( where = ( hms_poid ^= 'MISSING' ) rename = ( &counttype._count = wkmx_count &counttype._fraction = wkmx_fraction ) );
+    	emdub_ip_migs ( where = ( hms_poid ^ = 'MISSING' ) rename = ( &counttype._count = emdub_count &counttype._fraction = emdub_fraction ) )
+		state_ip_migs( where = ( hms_poid ^= 'MISSING' ) rename = ( &counttype._count = state_count &counttype._fraction = state_fraction ) )
+		wkmx_ip_migs( where = ( hms_poid ^= 'MISSING' ) rename = ( &counttype._count = wkmx_count &counttype._fraction = wkmx_fraction ) );
     by hms_poid hms_piid ;
     run;
 
@@ -289,7 +341,7 @@ data _null_;
       NOTE: Starting 10/11/2016 - use CMS piid@poid data only if the poid appears in facility counts */ 
   data allpayer_piidatpoid1;
     merge allpayer_piidatpoid ( in = a ) 
-	      facility_counts_output ( in = b keep = hms_poid wk_valid state_valid cms_valid claim_dlvry POID_Class );
+	      facility_counts_output ( in = b keep = hms_poid wk_valid state_valid cms_valid claim_dlvry POID_Class Switch_valid_alt3 CMS_valid_alt3 child_flag);
     by hms_poid;
 
 	if a and b then do;		
@@ -369,7 +421,10 @@ data _null_;
 
   /* Determine which counts to use based on what is valid and available */
   data claim.allpayer_count;
+  length count_source $10.;
     set allpayer_piidatpoid1;
+
+IF child_flag = 1 THEN DO;
 
 	/* If WK and State Data are valid OR State is valid and POID_Class in 1 then decide between State & WK */
     if ( wk_valid = 1 and state_valid = 1 ) or 
@@ -379,12 +434,15 @@ data _null_;
          Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
 	  if ( state_count = . and wkub_count = . and wkmx_count = . ) then do; allpayer_count = 0; allpayer_fraction = 0; end;
       else if max(state_count, wkub_count, wkmx_count) = state_count then do; 
+	    count_source = 'STATE';
 		allpayer_count = state_count; allpayer_fraction = state_fraction; 
 		end;
 	  else if max(state_count, wkub_count, wkmx_count) = wkub_count then do;
+	    count_source = 'WKUB';
 	    allpayer_count = wkub_count; allpayer_fraction = wkub_fraction;
 	 	end;
 	  else if max(state_count, wkub_count, wkmx_count) = wkmx_count then do;
+	    count_source = 'WKMX';
 		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
 		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
 	 	end;
@@ -397,9 +455,11 @@ data _null_;
          Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
       if (wkub_count = . and wkmx_count = .) then do; allpayer_count = 0; allpayer_fraction = 0; end;
       else if max(wkub_count, wkmx_count) = wkub_count then do; 
+	    count_source = 'WKUB';
 	    allpayer_count = wkub_count; allpayer_fraction = wkub_fraction;
 		end;
 	  else if max(wkub_count, wkmx_count) = wkmx_count then do;
+	    count_source = 'WKMX';
 		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
 		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
 		end;
@@ -412,9 +472,11 @@ data _null_;
          Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
       if (state_count = . and wkmx_count = .) then do; allpayer_count = 0; allpayer_fraction = 0; end;
       else if max(state_count, wkmx_count) = state_count then do;
+	    count_source = 'STATE';
 		allpayer_count = state_count; allpayer_fraction = state_fraction;
 		end;
       else if max(state_count, wkmx_count) = wkmx_count then do;
+	    count_source = 'WKMX';
 		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
 		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
 		end;
@@ -422,12 +484,14 @@ data _null_;
 
     /* If both WK and State are not valid then use WK Professional Claims if they exist */   
     else if wk_valid = 0 and state_valid = 0 then do;
+	    count_source = 'WKMX';
 	  allpayer_count = max(wkmx_count, 0); allpayer_fraction = max(wkmx_fraction,0);
 	  wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
       end;
 
 	/* If the POID was not in projected facility claims then use WK Professional Claims if they exist */   
     else if wk_valid = . and state_valid = . then do;
+	    count_source = 'WKMX';
 	  allpayer_count = max(wkmx_count, 0); allpayer_fraction = max(wkmx_fraction,0);
 	  wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
       end;
@@ -446,6 +510,111 @@ data _null_;
 	   then the WKMX flag will remain set.  Note: WKMX Flag being set indicates that All Payer is only from WKMX */
     if claim_dlvry = 0 and allpayer_count > 0 and wkmx = 1 then wkmx = 1; else wkmx = 0;
     drop claim_dlvry;
+
+END;
+
+ELSE DO;
+
+	/* If WK and State Data are valid OR State is valid and POID_Class in 1 then decide between State & WK */
+    if ( Switch_valid_alt3 = 1 and state_valid = 1 ) or 
+	   ( state_valid = 1 and Switch_valid_alt3 = 0 and POID_Class = 1 ) then do;
+
+	  /* If State and both WK institutional and professional claims are missing then set All Payer Counts to 0,
+         Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
+	  if ( state_count = . and wkub_count = . and emdub_count = . and wkmx_count = . ) then do; allpayer_count = 0; allpayer_fraction = 0; end;
+      else if max(state_count, wkub_count, emdub_count, wkmx_count) = state_count then do; 
+	    count_source = 'STATE';
+		allpayer_count = state_count; allpayer_fraction = state_fraction; 
+		end;
+	  else if max(state_count, wkub_count, emdub_count, wkmx_count) = wkub_count then do;
+	    count_source = 'WKUB';
+	    allpayer_count = wkub_count; allpayer_fraction = wkub_fraction;
+	 	end;
+	  else if max(state_count, wkub_count, emdub_count, wkmx_count) = emdub_count then do;
+	    count_source = 'EMDUB';
+	    allpayer_count = emdub_count; allpayer_fraction = 1.25*emdub_fraction;
+	 	end;
+	  else if max(state_count, wkub_count, emdub_count, wkmx_count) = wkmx_count then do;
+	    count_source = 'WKMX';
+		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
+		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
+	 	end;
+  	  end;
+
+    /* If WK is Valid and State is not, or State is not Valid and POID Class = 1 then use WK */
+    else if (Switch_valid_alt3 = 1 and state_valid = 0) or  (state_valid = 0 and Switch_valid_alt3 = 0 and POID_Class = 1 ) then do;
+	
+	  /* If both WK institutional and professional claims are missing then set All Payer Counts to 0,
+         Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
+      if (wkub_count = . and emdub_count = . and wkmx_count = .) then do; allpayer_count = 0; allpayer_fraction = 0; end;
+      else if max(wkub_count, wkmx_count, emdub_count) = wkub_count then do; 
+	    count_source = 'WKUB';
+	    allpayer_count = wkub_count; allpayer_fraction = wkub_fraction;
+		end;
+      else if max(wkub_count, wkmx_count, emdub_count) = emdub_count then do; 
+	    count_source = 'EMDUB';
+	    allpayer_count = emdub_count; allpayer_fraction = 1.25*emdub_fraction;
+		end;
+	  else if max(wkub_count, wkmx_count, emdub_count) = wkmx_count then do;
+	    count_source = 'WKMX';
+		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
+		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
+		end;
+      end;
+
+	/* If State is Valid and WK is not then use State or WK Professional Claims */  
+    else if Switch_valid_alt3 = 0 and state_valid = 1 then do;
+	
+	  /* If both State and WK professional claims are missing then set All Payer Counts to 0,
+         Otherwise, use the largest value as the All Payer Count for that PIID@POID combo */
+      if (state_count = . and emdub_count = . and wkmx_count = .) then do; allpayer_count = 0; allpayer_fraction = 0; end;
+      else if max(state_count, wkmx_count) = state_count then do;
+	    count_source = 'STATE';
+		allpayer_count = state_count; allpayer_fraction = state_fraction;
+		end;
+      else if max(state_count, wkmx_count) = wkmx_count then do;
+	    count_source = 'WKMX';
+		allpayer_count = wkmx_count; allpayer_fraction = wkmx_fraction;
+		wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
+		end;
+	  end;
+
+    /* If both WK and State are not valid then use WK Professional Claims if they exist */   
+    else if Switch_valid_alt3 = 0 and state_valid = 0 then do;
+	    count_source = 'WKMX';
+	  allpayer_count = max(wkmx_count, 0); allpayer_fraction = max(wkmx_fraction,0);
+	  wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
+      end;
+
+	/* If the POID was not in projected facility claims then use WK Professional Claims if they exist */   
+    else if Switch_valid_alt3 = . and state_valid = . then do;
+	    count_source = 'WKMX';
+	  allpayer_count = max(wkmx_count, 0); allpayer_fraction = max(wkmx_fraction,0);
+	  wkmx = 1; /* SET WKMX Flag to 1 if WKMX Data was Used */
+      end;
+
+	/* Rename PxDx Counts as CMS Counts (since that is what they originally were) */
+	cms_count = pxdx_count;
+	cms_fraction = pxdx_fraction;
+
+    /* ONLY ONE OF ALL PAYER AND CMS WILL BE NON_ZERO:
+	   If All Payer Count is less than PxDx_Count [CMS] then set All Payer to zero.
+       If All Payer Count is greater than or Equal to PxDx_Count [CMS] then set CMS to zero. */
+	if count_source ~= 'EMDUB' then do;
+    	if allpayer_count < pxdx_count then do; allpayer_count = 0; allpayer_fraction = 0; end;
+    	else if allpayer_count >= pxdx_count then do; cms_count = 0; cms_fraction = 0; end;
+	end;
+	if count_source = 'EMDUB' then do;
+    	if allpayer_count < pxdx_count then do; allpayer_count = 0; allpayer_fraction = 0; end;
+    	else if allpayer_count >= pxdx_count then do; cms_count = 0; cms_fraction = 0; end;
+	end;
+    /* If this POID had 0 claims from the projected facility count, there are All Payer Claims, AND the WKMX flag is set, 
+	   then the WKMX flag will remain set.  Note: WKMX Flag being set indicates that All Payer is only from WKMX */
+    if claim_dlvry = 0 and allpayer_count > 0 and wkmx = 1 then wkmx = 1; else wkmx = 0;
+    drop claim_dlvry;
+
+END;
+
     run;
 
   /* Create a working copy of AllPayer_Count dataset that has null PIIDs removed */ 
@@ -811,6 +980,8 @@ data _null_;
 
   proc sort data = allpayer_piid; by descending piid_total; run;
 
+  /* initialize maxnum to be -1 */
+  %let maxnum = -1;
   option obs = 10;
   data claim.top10;
     set allpayer_piid end = num;
@@ -823,7 +994,8 @@ data _null_;
        NOTE: Based on dataset Non-CMS Only PIID@POID level data with IP Matrix filter */
   data claim_delvry_adj claim_delvry_noadj;
     set claim.claim_delvry_nocap1;
-    if PractNatlProjCount > &maxnum then output claim_delvry_adj; else output claim_delvry_noadj;
+	if &maxnum = -1 then output claim_delvry_noadj;
+    else if PractNatlProjCount > &maxnum then output claim_delvry_adj; else output claim_delvry_noadj;
     run;
 
   proc sort data = claim_delvry_adj out = adj_piid_count ( keep = hms_piid PractNatlProjCount ) nodupkey;
@@ -927,13 +1099,15 @@ data _null_;
 
 
 /* MODIFICATION 3.18.2018: New file formats */
+/* MODIFICATION 9.28.2020: Change to dedup method */
 
 data temp;
 set output2;
-if HMS_POID = '' then HMS_POID = 'MISSING';
-if HMS_PIID = '' then HMS_PIID = 'MISSING';
+*if HMS_POID = '' then HMS_POID = 'MISSING';
+*if HMS_PIID = '' then HMS_PIID = 'MISSING';
 run;
 
+/*
 proc means data=temp nway sum noprint;
 class HMS_PIID / missing;
 var PractFacProjCount;
@@ -950,6 +1124,34 @@ proc means data=temp nway sum noprint;
 class HMS_PIID HMS_POID / missing;
 var PractFacProjCount;
 output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+*/
+
+proc sort data=temp nodupkey out=prac_proj(keep=HMS_PIID PractNatlProjCount);
+by HMS_PIID;
+run;
+data prac_proj;
+set prac_proj;
+COUNT = PractNatlProjCount;
+drop PractNatlProjCount;
+run;
+
+proc sort data=temp nodupkey out=org_proj(keep=HMS_POID FacProjCount);
+by HMS_POID;
+run;
+data org_proj;
+set org_proj;
+COUNT = FacProjCount;
+drop FacProjCount;
+run;
+
+proc sort data=temp nodupkey out=prac_org_proj(keep=HMS_PIID HMS_POID PractFacProjCount);
+by HMS_PIID HMS_POID;
+run;
+data prac_org_proj;
+set prac_org_proj;
+COUNT = PractFacProjCount;
+drop PractFacProjCount;
 run;
 
 proc export data=prac_proj outfile='prac_proj.txt' replace;
