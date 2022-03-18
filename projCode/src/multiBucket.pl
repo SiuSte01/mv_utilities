@@ -12,6 +12,7 @@ my $libDir;
 my $aggrDir;
 my $envName;
 my $codeDir;
+my $qaFullTabCall = "QA_full_tab_new_KE_v3";
 BEGIN
 {
 	$scriptDir = Cwd::abs_path(dirname($0));
@@ -19,16 +20,20 @@ BEGIN
 	if($lib =~ m/mv_utilities/)
 	{
 		$codeDir = $lib . "/src";
+		my $mvDir = $lib;
+		$mvDir =~ s/mv_utilities.*/mv_utilities/;
+		$qaFullTabCall = "perl " . $mvDir . "/scripts/scripts/QA_full_tab_PxDx/QA_full_tab_new_KE_v3";
 		$lib =~ s/mv_utilities.*/perl_utilities/;
 		$libDir = Cwd::abs_path($lib) . "/lib";
 		$aggrDir = Cwd::abs_path($lib) . "/aggr";
+		
 	}
 	else
 	{
 		$lib = `conda info -e | grep '*'`;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
-		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
@@ -89,12 +94,13 @@ my $validCMS;
 $validCMS->{"ip"} = "ip";
 $validCMS->{"op"} = "op";
 $validCMS->{"office"} = "office";
-$validCMS->{"asc"} = "asc";
-$validCMS->{"lab"} = "lab";
-$validCMS->{"home"} = "home";
 $validCMS->{"hha"} = "hha";
 $validCMS->{"hospice"} = "hospice";
 $validCMS->{"snf"} = "snf";
+$validCMS->{"asc"} = "asc";
+$validCMS->{"home"} = "home";
+$validCMS->{"lab"} = "lab";
+$validCMS->{"tele"} = "tele";
 
 readInputs();
 my $settingsUsed;
@@ -255,6 +261,12 @@ sub runMakefileStep
 	#print $pxdxCmd . "\n";
 	#exit 0;
 	system($pxdxCmd);
+	if(-e "patching_log.txt")
+	{
+		my $logSize = -s "patching_log.txt";
+		#lineTracker
+		system("rm patching_log.txt") if($logSize > 1048576);
+	}
 	print "RUNNING PXDX_REPORT done\n";
 }
 
@@ -290,7 +302,7 @@ sub runQCStep
 		print "RUNNING QC CHECK FOR " . $bucket . "...";
 		die "\n\tQA Directory missing for bucket " . $bucket . "\n" unless -d $bucket . "/QA";
 		chdir($bucket . "/QA");
-		system("R CMD BATCH --vanilla /vol/datadev/Statistics/Katie/New_Script_KE/QA_full_tab_new_KE_v3.R");
+		system($qaFullTabCall);
 		print "done\n";
 		chdir($rootLoc);
 	}
@@ -300,7 +312,7 @@ sub runQCStep
 		print "RUNNING QC CHECK FOR Combined Deliverable...";
 		die "\n\tmilestones Directory missing for Combined Deliverable\n" unless -d "milestones";
 		chdir("milestones");
-		system("R CMD BATCH --vanilla /vol/datadev/Statistics/Katie/New_Script_KE/QA_full_tab_new_KE_v3.R");
+		system($qaFullTabCall);
 		print "done\n";
 		chdir($rootLoc);
 	}
@@ -616,32 +628,37 @@ sub buildFolders
 				MiscFunctions::symlinkFile(file=>"asc_datamatrix.sas7bdat",path=>$bucket . "/" . $projections . "/Hospital/OP");
 			}
 		}
+        if(exists $options->{"office"})
+		{
+			system("mkdir","-p",$bucket . "/" . $projections . "/Office");
+			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Office");
+		}
 		if(exists $options->{"hha"} or $options->{"hospice"} or $options->{"snf"})
 		{
 			system("mkdir","-p",$bucket . "/" . $projections . "/PAC");
 			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/PAC");
+		}
+        if(exists $options->{"asc"})
+		{
+			system("mkdir","-p",$bucket . "/" . $projections . "/ASC");
+			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/ASC");
+			MiscFunctions::symlinkFile(file=>"asc_datamatrix.sas7bdat",path=>$bucket . "/" . $projections . "/ASC");
 		}
 		if(exists $options->{"home"})
 		{
 			system("mkdir","-p",$bucket . "/" . $projections . "/Home");
 			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Home");
 		}
-		if(exists $options->{"office"})
-		{
-			system("mkdir","-p",$bucket . "/" . $projections . "/Office");
-			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Office");
-		}
 		if(exists $options->{"lab"})
 		{
 			system("mkdir","-p",$bucket . "/" . $projections . "/Lab");
 			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Lab");
 		}
-		if(exists $options->{"asc"})
-		{
-			system("mkdir","-p",$bucket . "/" . $projections . "/ASC");
-			MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/ASC");
-			MiscFunctions::symlinkFile(file=>"asc_datamatrix.sas7bdat",path=>$bucket . "/" . $projections . "/ASC");
-		}
+		if(exists $options->{"tele"})
+        {
+            system("mkdir","-p",$bucket . "/" . $projections . "/Tele");
+            MiscFunctions::symlinkFile(file=>$bucket . "/" . $projections . "/" . $inputFile,path=>$bucket . "/" . $projections . "/Tele");
+        }
 	}
 }
 
@@ -826,7 +843,7 @@ sub printInputFile
 	{
 		print $handle "HospitalType\t" . $hospitalType . "\n";
 	}
-	foreach my $y (qw/ip op office asc/)
+	foreach my $y (qw/ip op office asc tele/)
 	{
 		if(exists $options->{$y} && exists $memoryHash->{"DNP_BUCKETS"}->{$bucket}->{"SETTINGS"}->{$y})
 		{
@@ -901,6 +918,7 @@ sub runProjections
 			if(($type eq "PX") and ($memoryHash->{$bucket}->{"PX_ICD910"}) and !($memoryHash->{$bucket}->{"PX_CPT"}))
 			{
 				print "\t\tSKIPPING RUNNING OFFICE PROJECTIONS FOR " . $bucket . "\n";
+				system("rm -rf " . $bucket . "/Projections/Office");
 			}
 			else
 			{
@@ -915,11 +933,34 @@ sub runProjections
 				chdir($rootLoc);
 			}
 		}
+        if(exists $options->{"tele"})
+        {
+            if(($type eq "PX") and ($memoryHash->{$bucket}->{"PX_ICD910"}) and !($memoryHash->{$bucket}->{"PX_CPT"}))
+			{
+				print "\t\tSKIPPING RUNNING TELEHEALTH PROJECTIONS FOR " . $bucket . "\n";
+				system("rm -rf " . $bucket . "/Projections/Tele");
+			}
+			else
+			{
+				print "\t\tRUNNING TELEHEALTH PROJECTIONS FOR " . $bucket . "\n";
+				chdir($bucket . "/Projections/Tele");
+                #Telehealth projections are not developed yet and will be written in Python,
+                #so no actions will be performed currently
+				#print "sas -noterminal -memsize 4G " . $codeDir . "/project_Tele.sas\n";
+				#system("sas -noterminal -memsize 4G " . $codeDir . "/project_Tele.sas");
+				#unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
+				#{
+				#	system("rm *sas7*");
+				#}
+				chdir($rootLoc);
+			}
+        }
 		if(exists $options->{"asc"})
 		{
-			if(($type eq "PX") and ($memoryHash->{$x}->{"PX_ICD910"}) and !($memoryHash->{$x}->{"PX_CPT"}))
+			if(($type eq "PX") and ($memoryHash->{$bucket}->{"PX_ICD910"}) and !($memoryHash->{$x}->{"PX_CPT"}))
 			{
 				print "\t\tSKIPPING RUNNING ASC PROJECTIONS FOR " . $bucket . "\n";
+				system("rm -rf " . $bucket . "/Projections/ASC");
 			}
 			else
 			{
@@ -936,6 +977,7 @@ sub runProjections
 			if(($type eq "PX") and !($memoryHash->{$bucket}->{"PX_ICD910"}) and ($memoryHash->{$bucket}->{"PX_CPT"}))
 			{
 				print "\t\tSKIPPING RUNNING IP PROJECTIONS FOR " . $bucket . "\n";
+				system("rm -rf " . $bucket . "/Projections/Hospital/IP");
 			}
 			elsif($type eq "ALL")
 			{
@@ -973,6 +1015,7 @@ sub runProjections
 			if(($type eq "PX") and ($memoryHash->{$bucket}->{"PX_ICD910"}) and !($memoryHash->{$bucket}->{"PX_CPT"}))
 			{
 				print "\t\tSKIPPING RUNNING OP PROJECTIONS FOR " . $bucket . "\n";
+				system("rm -rf " . $bucket . "/Projections/Hospital/OP");
 			}
 			else
 			{
@@ -983,16 +1026,17 @@ sub runProjections
 			}
 		}
 		
-		if(exists $options->{"ip"} and exists $options->{"op"})
+		if(exists $options->{"ip"} or exists $options->{"op"})
 		{
+			#always run combine_ipop.py if either ip or op requested, assuming at least one of the projection files were produced
 			chdir($bucket . "/Projections/Hospital");
-			if(-e "IP/hospital_projections.txt" and -e "OP/hospital_projections.txt")
+			if(-e "IP/hospital_projections.txt" or -e "OP/hospital_projections.txt")
 			{
-				system("sas -noterminal " . $codeDir . "/combineipop.sas");
+				system("combine_ipop.py");
 				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
 				{
-					system("rm IP/*sas7*");
-					system("rm OP/*sas7*");
+					system("rm -f IP/*sas7*");
+					system("rm -f OP/*sas7*");
 					if(-e "IP/Child")
 					{
 						system("rm IP/Child/*sas7*");
@@ -1001,82 +1045,9 @@ sub runProjections
 					{
 						system("rm IP/NonChild/*sas7*");
 					}
-				}
-			}
-			elsif(-e "IP/hospital_projections.txt")
-			{
-				print "WARNING - OP hospital projections does not exist. Using only IP\n";
-				system("cut -f2- IP/hospital_projections_nostar.txt > hospital_projections.txt");
-				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
-				{
-					system("rm IP/*sas7*");
-					if(-e "IP/Child")
-					{
-						system("rm IP/Child/*sas7*");
-					}
-					if(-e "IP/NonChild")
-					{
-						system("rm IP/NonChild/*sas7*");
-					}
-				}
-			}
-			elsif(-e "OP/hospital_projections.txt")
-			{
-				print "WARNING - IP hospital projections does not exist. Using only OP\n";
-				system("cut -f2- OP/hospital_projections_nostar.txt > hospital_projections.txt");
-				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
-				{
-					system("rm OP/*sas7*");
 				}
 			}
 			chdir($rootLoc);
-		}
-		else
-		{
-			if(exists $options->{"ip"})
-			{
-				chdir($bucket . "/Projections/Hospital");
-				if(-e "IP/hospital_projections_nostar.txt")
-				{
-					system("cut -f2- IP/hospital_projections_nostar.txt > hospital_projections.txt");
-				}
-				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
-				{
-					system("rm IP/*sas7*");
-					if(-e "IP/Child")
-					{
-						system("rm IP/Child/*sas7*");
-					}
-					if(-e "IP/NonChild")
-					{
-						system("rm IP/NonChild/*sas7*");
-					}
-				}
-				chdir($rootLoc);
-			}
-			elsif(exists $options->{"op"})
-			{
-				chdir($bucket . "/Projections/Hospital");
-				if(-e "OP/hospital_projections_nostar.txt")
-				{
-					system("cut -f2- OP/hospital_projections_nostar.txt > hospital_projections.txt");
-				}
-				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
-				{
-					system("rm OP/*sas7*");
-				}
-				chdir($rootLoc);
-			}
-		}
-		my $count = $memoryHash->{"JVS_RAW"}->{$x}->{"COUNT_TYPE"};
-		if($count eq "PATIENT")
-		{
-			if((exists $options->{"ip"}) or (exists $options->{"op"}))
-			{
-				chdir($bucket . "/Projections/Hospital");
-				system("perl " . $codeDir . "/dopatients.pl");
-				chdir($rootLoc);
-			}
 		}
 		
 		if(exists $options->{"lab"})

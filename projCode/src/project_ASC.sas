@@ -98,6 +98,26 @@ if Parameter = 'CODETYPE' then do;
 end;
 
 run;
+
+/* Use inputs to change px_check to 0 if bucket is allcodes pediatric age */
+%macro allcodes_peds;
+%if &Codetype. = ALL %then %do;
+
+data _null_;
+set inputs;
+
+if Parameter = 'BUCKET' then do;
+	if find(VALUE,'Peds','i',1) > 0 then call symput('px_check',0);
+end;
+
+run;
+
+%end;
+%mend;
+
+%allcodes_peds;
+%put px_check = &px_check;
+
 /* Create a National Count aggr name */
 %let Natl_Aggr = WKUB_ASC;
 
@@ -362,9 +382,19 @@ var &TOTAL_COUNT. &MDCR_COUNT.;
 output out=STATE_sum(drop=_TYPE_ _FREQ_) sum=;
 run;
 
+/* MODIFICATION 04.03.2022: with added USEMEDIAN value, user can force replacement factor if initial results are unexpected */
+%let replacement_factor = 0;
+data _null_;
+set inputs;
+if Parameter = 'USEMEDIAN' then do;
+	if VALUE = 'N' then call symput('replacement_factor',0);
+	else call symput('replacement_factor',1);
+end;
+run;
+%put replacement_factor = &replacement_factor;
+
 /* First Check - make sure there are state Medicare counts */
 /* If not, set model factors equal to the median pf during post-model selection */
-%let replacement_factor = 0;
 proc sql;
 create table check1 as select sum(&MDCR_COUNT.) as medicare_sum from STATE_sum;
 quit;
@@ -661,10 +691,20 @@ where HMS_POID ~= '';
 Medicare_Pct = round(100*&MDCR_COUNT./&TOTAL_COUNT.,.01);
 run;
 
+data SWITCH_medicare_pct;
+set SWITCH_sum;
+where HMS_POID ~= '';
+Medicare_Pct = round(100*&MDCR_COUNT./&TOTAL_COUNT.,.01);
+run;
+
+
 proc sort data=STATE_medicare_pct;
 by HMS_POID;
 run;
 proc sort data=SWITCH_sum;
+by HMS_POID;
+run;
+proc sort data=SWITCH_medicare_pct;
 by HMS_POID;
 run;
 proc sort data=CMS_&TOTAL_COUNT.;
@@ -674,9 +714,74 @@ proc sort data=matrloc.asc_datamatrix out=matrix; /* MODIFICATION 8.20.2018: rem
 by HMS_POID;
 run;
 
+/* State-Switch selection criteria */
+data STATE_set;
+set STATE_medicare_pct;
+rename &TOTAL_COUNT. = &TOTAL_COUNT._st;
+rename &MDCR_COUNT. = &MDCR_COUNT._st;
+run;
+data SWITCH_set;
+set SWITCH_medicare_pct;
+rename &TOTAL_COUNT. = &TOTAL_COUNT._sw;
+rename &MDCR_COUNT. = &MDCR_COUNT._sw;
+run;
+
+proc means data=SWITCH_set noprint nway sum;
+output out=switch_counts(drop=_type_ _freq_) sum=;
+run;
+
+/* initialize medicare fraction to absurd number in case no data exists */
+%let sw_med_fraction = 100;
+data asc.IP_Med_Fraction;
+set switch_counts;
+sw_med_fraction=&MDCR_COUNT._sw/&TOTAL_COUNT._sw;
+call symput('sw_med_fraction',sw_med_fraction);
+run;
+%put 'sw_med_fraction :' &sw_med_fraction;
+proc export data=asc.IP_Med_Fraction outfile='IP_Med_Fraction_switch.txt' dbms=tab replace;
+run;
+
+data ALL_medicare_percents;
+merge STATE_set(in=a) SWITCH_set(in=b);
+by HMS_POID;
+/*
+if a then STATE = 1;
+else STATE = 0;
+if b then SWITCH = 1;
+else SWITCH = 0;
+*/
+if a and b then do;
+	if &TOTAL_COUNT._st >= &TOTAL_COUNT._sw then do;
+		&TOTAL_COUNT. = &TOTAL_COUNT._st;
+		&MDCR_COUNT. = &MDCR_COUNT._st;
+		choice = 'STATE ';
+	end;
+	else do;
+		&TOTAL_COUNT. = &TOTAL_COUNT._sw;
+		/* in case medicare fraction doesn't exist (set to 100) */
+		if &sw_med_fraction. = 100 then &MDCR_COUNT. = &MDCR_COUNT._sw;
+		else &MDCR_COUNT. = floor(&TOTAL_COUNT._sw*&sw_med_fraction.);
+		choice = 'SWITCH';
+	end;
+end;
+
+else if a and not b then do;
+	&TOTAL_COUNT. = &TOTAL_COUNT._st;
+	&MDCR_COUNT. = &MDCR_COUNT._st;
+	choice = 'STATE ';
+end;
+else if b and not a then do;
+	&TOTAL_COUNT. = &TOTAL_COUNT._sw;
+	&MDCR_COUNT. = &MDCR_COUNT._sw;
+	choice = 'SWITCH';
+end;
+
+run;
+
+
 /* Calculations */
-data STATE_medicare_percents;
-merge STATE_medicare_pct(in=a) matrix(in=b);
+data STATE_medicare_percents; /* Includes Switch, I just don't feel like changing all names */
+merge ALL_medicare_percents(in=a) matrix(in=b);
 by HMS_POID;
 if a and b;
 Log_Counts = log10(&TOTAL_COUNT.);
@@ -688,7 +793,7 @@ run;
 
 /* Append covariates to all sources */
 data All_sources;
-merge STATE_medicare_pct(rename=(&TOTAL_COUNT.=COUNTS_STATE &MDCR_COUNT.=COUNTS_MED_STATE))
+merge STATE_medicare_percents(rename=(&TOTAL_COUNT.=COUNTS_STATE &MDCR_COUNT.=COUNTS_MED_STATE))
 SWITCH_sum(rename=(&TOTAL_COUNT.=COUNTS_SWITCH &MDCR_COUNT.=COUNTS_MED_SWITCH))
 CMS_&TOTAL_COUNT.;
 by HMS_POID;
@@ -707,11 +812,29 @@ by HMS_POID;
 if a and b;
 run;
 
-proc export data=All_sources_wcov outfile='facilities_wcov.txt' replace;
+proc export data=All_sources_wcov outfile='facilities_wcov_new.txt' replace;
 run;
 
-/* Calculate and remove outliers */
-proc means data=STATE_medicare_percents noprint q1 q3;
+
+/* Calculate and remove outliers from State ONLY */
+data State_medicare_pct_only;
+set STATE_set;
+	&TOTAL_COUNT. = &TOTAL_COUNT._st;
+	&MDCR_COUNT. = &MDCR_COUNT._st;
+	choice = 'STATE ';
+run;
+data State_medicare_pct_only1;
+merge State_medicare_pct_only(in=a) matrix(in=b);
+by HMS_POID;
+if a and b;
+Log_Counts = log10(&TOTAL_COUNT.);
+Med_fraction = &MDCR_COUNT./&TOTAL_COUNT.;
+if &MDCR_COUNT. ~= 0 then projection_factor = &TOTAL_COUNT./&MDCR_COUNT.;
+proj_factor_log = log10(projection_factor);
+Boxplot = 'States';
+run;
+
+proc means data=State_medicare_pct_only1 noprint q1 q3;
 var Log_Counts;
 output out=iqr_out_vol q1=q1 q3=q3;
 run;
@@ -732,7 +855,7 @@ run;
 %put Vol_Outlier_Low = &Vol_Outlier_Low;
 %put Vol_Outlier_High = &Vol_Outlier_High;
 data remove_out1;
-set STATE_medicare_percents;
+set State_medicare_pct_only1;
 if Log_Counts < &Vol_Outlier_Low. then delete;
 if &MDCR_COUNT. = 0 then delete;
 run;
@@ -759,7 +882,7 @@ run;
 
 /* Create modeling dataset */
 data model_set;
-set remove_out1;
+set STATE_medicare_percents;
 if proj_factor_log < &Med_Outlier_Low. then delete;
 else if proj_factor_log >= &Med_Outlier_High. then delete;
 else if projection_factor = 1 then delete;
@@ -852,6 +975,7 @@ model_set(in=model_state keep=HMS_POID)
 CMS_temp(in=cms keep=HMS_POID)
 SWITCH_sum(in=emd keep=HMS_POID)
 STATE_medicare_percents(in=st keep=HMS_POID)
+State_medicare_pct_only1(in=sto keep=HMS_POID)
 ;
 by HMS_POID;
 
@@ -859,7 +983,7 @@ if &replacement_factor = 0 then
 model_factor = ((10**(yhat))*(10**&Med_Outlier_High.)+1)/((10**(yhat))+1);
 else model_factor = &median_pf_fac.;
 
-if model_state then FAC_COUNT = COUNTS_STATE;
+if model_state and sto then FAC_COUNT = COUNTS_STATE;
 else if emd and not (model_state or cms or st) then FAC_COUNT = COUNTS_SWITCH;
 else if st and not (model_state or cms or emd) then FAC_COUNT = COUNTS_STATE;
 else if st and emd and not (model_state or cms) then FAC_COUNT = COUNTS_STATE;
@@ -874,6 +998,16 @@ else if cms and emd and st and not model_state then do;
 	if (COUNTS_SWITCH-COUNTS_MED_SWITCH) > 0.5*(&NameType._CMS*(1-&Median_Med_fraction.)/&Median_Med_fraction.)
 	then FAC_COUNT = COUNTS_SWITCH-COUNTS_MED_SWITCH+&NameType._CMS;
 	else FAC_COUNT = model_factor*&NameType._CMS;
+end;
+
+else if model_state and not sto then do;
+	if emd and not cms then FAC_COUNT = COUNTS_SWITCH;
+	else if cms and not emd then FAC_COUNT = model_factor*&NameType._CMS;
+	else if cms and emd then do;
+		if (COUNTS_SWITCH-COUNTS_MED_SWITCH) > 0.5*(&NameType._CMS*(1-&Median_Med_fraction.)/&Median_Med_fraction.)
+		then FAC_COUNT = COUNTS_SWITCH-COUNTS_MED_SWITCH+&NameType._CMS;
+		else FAC_COUNT = model_factor*&NameType._CMS;
+	end;
 end;
 
 FINAL_FACILITY_COUNT = ceil(FAC_COUNT);
@@ -909,10 +1043,11 @@ model_set(in=model_state keep=HMS_POID)
 CMS_&TOTAL_COUNT.(in=cms keep=HMS_POID)
 SWITCH_sum(in=emd keep=HMS_POID)
 STATE_medicare_percents(in=st keep=HMS_POID)
+State_medicare_pct_only1(in=sto keep=HMS_POID)
 ;
 by HMS_POID;
 
-if model_state then FAC_COUNT = COUNTS_STATE;
+if model_state and sto then FAC_COUNT = COUNTS_STATE;
 else if emd and not (model_state or cms or st) then FAC_COUNT = COUNTS_SWITCH;
 else if st and not (model_state or cms or emd) then FAC_COUNT = COUNTS_STATE;
 else if st and emd and not (model_state or cms) then FAC_COUNT = COUNTS_STATE;
@@ -938,6 +1073,16 @@ else if cms and emd and st and not model_state then do;
 	else FAC_COUNT = &NameType._CMS;
 end;
 
+else if model_state and not sto then do;
+	if emd and not cms then FAC_COUNT = COUNTS_SWITCH;
+	else if cms and not emd then FAC_COUNT = &median_pf_fac.*&NameType._CMS;
+	else if cms and emd then do;
+		if (COUNTS_SWITCH-COUNTS_MED_SWITCH) > 0.5*(&NameType._CMS*(1-&Median_Med_fraction.)/&Median_Med_fraction.)
+		then FAC_COUNT = COUNTS_SWITCH-COUNTS_MED_SWITCH+&NameType._CMS;
+		else FAC_COUNT = &NameType._CMS;
+	end;
+end;
+
 FINAL_FACILITY_COUNT = ceil(FAC_COUNT);
 if FINAL_FACILITY_COUNT = . then delete;
 
@@ -946,6 +1091,7 @@ run;
 %mend Fac_Proj_no;
 
 %Fac_Proj_&do_cms_projection.();
+
 
 /* Cap unusually high facility projections */
 data logs;
@@ -1855,13 +2001,15 @@ proc export data=ASC.asc_projections outfile='asc_projections.txt' replace;
 run;
 
 /* MODIFICATION 3.18.2018: New file formats */
+/* MODIFICATION 9.28.2020: Change to dedup method */
 
 data temp;
 set ASC.asc_projections;
-if HMS_POID = '' then HMS_POID = 'MISSING';
-if HMS_PIID = '' then HMS_PIID = 'MISSING';
+*if HMS_POID = '' then HMS_POID = 'MISSING';
+*if HMS_PIID = '' then HMS_PIID = 'MISSING';
 run;
 
+/*
 proc means data=temp nway sum noprint;
 class HMS_PIID / missing;
 var PractFacProjCount;
@@ -1878,6 +2026,34 @@ proc means data=temp nway sum noprint;
 class HMS_PIID HMS_POID / missing;
 var PractFacProjCount;
 output out=prac_org_proj(drop=_TYPE_ _FREQ_) sum=COUNT;
+run;
+*/
+
+proc sort data=temp nodupkey out=prac_proj(keep=HMS_PIID PractNatlProjCount);
+by HMS_PIID;
+run;
+data prac_proj;
+set prac_proj;
+COUNT = PractNatlProjCount;
+drop PractNatlProjCount;
+run;
+
+proc sort data=temp nodupkey out=org_proj(keep=HMS_POID FacProjCount);
+by HMS_POID;
+run;
+data org_proj;
+set org_proj;
+COUNT = FacProjCount;
+drop FacProjCount;
+run;
+
+proc sort data=temp nodupkey out=prac_org_proj(keep=HMS_PIID HMS_POID PractFacProjCount);
+by HMS_PIID HMS_POID;
+run;
+data prac_org_proj;
+set prac_org_proj;
+COUNT = PractFacProjCount;
+drop PractFacProjCount;
 run;
 
 proc export data=prac_proj outfile='prac_proj.txt' replace;
