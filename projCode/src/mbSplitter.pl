@@ -29,7 +29,7 @@ BEGIN
 		$lib = `conda info -e | grep '*'`;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
-		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
@@ -756,7 +756,10 @@ sub runMB
 			push(@symlinkFiles,qw/asc_datamatrix/) if $setting eq "OfficeASC" || $setting eq "Freestanding";
 			foreach my $y (@symlinkFiles)
 			{
-				system("ln -s ../" . $y . ".sas7bdat .");
+                unless(-e $y . ".sas7bdat")
+                {
+                    system("ln -s ../" . $y . ".sas7bdat .");
+                }
 			}
 		}
 		
@@ -771,7 +774,17 @@ sub runMB
 		#clean bucket
 		foreach my $y (qw/asc_projections.txt asc_projections_wb.txt freestanding_projections.txt freestanding_projections_nostar.txt hospital_projections.txt hospital_projections_nostar.txt input.txt lab_proj.log lab_proj_debug.log lab_projection.txt lab_projections_wb.txt office_asc_projections.txt office_asc_projections_nostar.txt office_projections.txt office_projections_wb.txt project_ASC.log project_ASC.lst project_IP_facility.log project_IP_facility.lst project_IP_Practitioner.log project_Office.log project_Office.lst project_OP.log project_OP.lst *sas7bdat*/)
 		{
-			unless($setting eq "SNF" && $y eq "*sas7bdat*")
+			if($y eq "*sas7bdat*")
+			{
+				unless(uc($settingVars->{"PRESERVE_SAS"}[0]) eq "Y")
+				{
+					unless($setting eq "SNF")
+					{
+						system("rm -f " . $y);
+					}
+				}
+			}
+			else
 			{
 				system("rm -f " . $y);
 			}
