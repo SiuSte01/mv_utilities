@@ -24,7 +24,7 @@ BEGIN
 		$lib = `conda info -e | grep '*'`;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
-		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
@@ -175,12 +175,13 @@ foreach my $b (keys %b2type)
 		my $logfac="log_fac_$b2";
 		
 		#now symlink files needed from project directory
-		system("ln -s ../cms_poidlist.sas7bdat .");
-		system("ln -s ../ip_datamatrix.sas7bdat .");
-		system("ln -s ../poid_volume.sas7bdat .");
-		system("ln -s ../state_poidlist.sas7bdat .");
-		system("ln -s ../wk_poidlist.sas7bdat .");
-		system("ln -s ../poid_attributes_ip.sas7bdat .");
+        foreach my $x (qw/cms_poidlist ip_datamatrix poid_volume state_poidlist wk_poidlist poid_attributes_ip/)
+        {
+            unless(-e $x . ".sas7bdat")
+            {
+                system("ln -s ../" . $x . ".sas7bdat .");
+            }
+        }
 		
 #		if($b2type{$b} eq "Proj" || $b2type{$b} eq "NoProj")
 #		{
@@ -255,9 +256,13 @@ foreach my $b (keys %b2type)
 		my $loginp=$b2.".log";
 		
 		#symlink the necessary files from project dir
-		system("ln -s ../op_datamatrix.sas7bdat .");
-		system("ln -s ../poid_attributes_op.sas7bdat .");
-		system("ln -s ../op_poids.sas7bdat .");
+        foreach my $x (qw/op_datamatrix poid_attributes_op op_poids/)
+        {
+            unless(-e $x . ".sas7bdat")
+            {
+                system("ln -s ../" . $x . ".sas7bdat .");
+            }
+        }
 		
 		#run projections
 #		if($b2type{$b} eq "Proj")
@@ -333,7 +338,10 @@ foreach my $b (keys %b2type)
 		my $deb_lab="lab_" . $b2 . "_debug.log";
 		
 		#symlink the necessary files from project dir
-		system("ln -s ../asc_datamatrix.sas7bdat .");
+        unless(-e "asc_datamatrix.sas7bdat")
+        {
+            system("ln -s ../asc_datamatrix.sas7bdat .");
+        }
 		
 		#run office projections
 		system("sas -noterminal -memsize 4G $codedir/project_Office.sas");
