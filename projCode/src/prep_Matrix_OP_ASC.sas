@@ -1,53 +1,43 @@
 options linesize=256 nocenter nonumber nodate mprint;
 /* ***************************************************************************************
-PROGRAM NAME:      prep_Matrix_OP_ASC.sas
-PURPOSE:           Create OP and ASC data matrices to use in projections
+PROGRAM NAME:      opmatrix.sas
+PURPOSE:           2012 state and wk data; to update op matrix
 PROGRAMMER:		   Jin Qian
 CREATION DATE:     7/31/2012
-UPDATED:		   Molli Jones, 5/14/2020
-NOTES:			   Called by createxwalks.py
-INPUT FILES:	   aha_demo, input.txt, poidmigration_lookup_&Vintage.sas7bdat, CMS_ASC_ProcedureData.txt,
-                   zip2fips.sas7bdat, covar_under65.sas7bdat, covar_County_Unemp.sas7bdat, 
-				   covar_MA_penetration.sas7bdat, covar_HI_expend.sas7bdat
-OUTPUT FILES:	   op_datamatrix.sas7bdat, asc_datamatrix.sas7bdat
+UPDATED:		   Molli Jones, 1/16/2018
+NOTES:
+INPUT FILES:       aha_demo
+OUTPUT FILES:      op_matrix
 ****************************************************************************************** */
 
 /* Read in input file and use to set environment variables */
 data inputs;
-  infile "input.txt" delimiter = '09'x MISSOVER DSD lrecl = 32767 firstobs = 2;
-  
-  informat Parameter $125.;
-  informat Value $200.;
-  
-  format Parameter $125.;
-  format Value $200.;
-  
-  input Parameter $ Value $;
+  infile "input.txt" delimiter = '09'x MISSOVER DSD lrecl = 32767 firstobs = 2 ;
+  format Parameter     $50. ;
+  format Value         $200. ;
+  informat Parameter   $50. ;
+  informat Value       $200. ;
+  input Parameter $ Value $ ;
   run;
 
 data _null_;
   set inputs;
   if Parameter eq 'VINTAGE' then call symput('Vintage', trim(left(compress(value))));
   if Parameter EQ 'FXFILES'  then call symput('fxfiles', trim(left(compress(value))));
+  if Parameter eq 'PROJDIR'  then call symput('projdir', trim(left(compress(value))));
   if Parameter eq 'USERNAME' then call symput('USERNAME', trim(left(compress(value))));
   if Parameter eq 'PASSWORD' then call symput('PASSWORD', trim(left(compress(value))));
   if Parameter eq 'INSTANCE' then call symput('INSTANCE', trim(left(compress(value))));
   if Parameter eq 'AGGREGATION_ID' then call symput('AGGREGATION_ID', trim(left(compress(value))));
   run;
-  
-%put 'Vintage:' &Vintage;
-%put 'FXFILES:' &FXFILES;
-%put 'USERNAME:' &USERNAME;
-%put 'PASSWORD:' &PASSWORD;
-%put 'INSTANCE:' &INSTANCE;
-%put 'AGGREGATION_ID:' &AGGREGATION_ID;
 
 /* Set libnames */
 libname fxfiles %unquote(%str(%'&FXFILES%'));
 libname claim '.';
+libname projdir %unquote(%str(%'&PROJDIR%'));
 libname profile oracle user = claims_usr password = claims_usr123 path = PLDWH2DBR SCHEMA = profileData;
 
-/* Get POIDs with Claims in OP */
+/* Get POIDs with Claims */
 /* For CA, pick POIDs that show up in both IP and OP claims - these are hospitals */
 /* Advisory Board uses CAOPA, NJOPA states - added these in */ 
 proc sql;
@@ -95,6 +85,129 @@ proc sql;
   disconnect from oracle;
   quit;
 %put &sqlxmsg;
+
+/* MODIFICATION 10.16.2019: Adding in Emdeon POIDs for testing */
+/* Add EMD POIDs to be filtered */
+proc sql;
+  connect to oracle ( user = &USERNAME password = &PASSWORD path = &INSTANCE );
+  
+  create table claim.op_poids_emd as select * from connection to oracle
+   ( select distinct h.id_value as HMS_POID, v.vendor_code
+       from claimswh.inst_claims a
+          inner join claimswh.facility_id_crosswalk h on a.facility_id = h.facility_id
+          inner join claimswh.bill_classifications b on a.bill_classification_id = b.bill_classification_id
+          inner join claims_aggr.job_vendors v on a.vendor_id = v.vendor_id
+       where v.job_id = &AGGREGATION_ID 
+	     and ( a.claim_through_date between v.first_vend_date and v.last_vend_date )
+         and a.load_batch <= v.last_vend_batch
+         and h.id_type='POID'
+         and (to_date(%unquote(%str(%'&Vintage%')),'YYYYMMDD') between h.start_date and h.end_date)
+         and ( (v.vendor_code in ('EMD') and b.classification_code='013' ) )
+                         
+    );
+  disconnect from oracle;
+  quit;
+
+proc sort data=claim.op_poids_emd out=op_poids_emd;
+by HMS_POID;
+run;
+proc sort data=claim.op_poids out=op_poids_norm(keep=HMS_POID);
+by HMS_POID;
+run;
+
+data op_poids_emd1;
+merge op_poids_norm(in=a) op_poids_emd(in=b);
+by HMS_POID;
+if b and not a;
+run;
+
+/* Add WK list to POID table */
+data op_poids_list1;
+merge op_poids_emd1(in=matrix) /* MODIFICATION 6/22/2016: change to project directory */
+projdir.WK_POIDList(in=WK);
+by HMS_POID;
+if matrix=1;
+if WK=1 then WK_Listed=1;
+else WK_Listed=0;
+run;
+/* Add State list to POID table */
+data Temp;
+merge op_poids_list1(in=matrix) 
+projdir.State_POIDList(in=Statee);
+by HMS_POID;
+if matrix=1;
+if Statee=1 then State_Listed=1;
+else State_Listed=0;
+run;
+/* Add CMS list to POID table */
+data op_poids_list1;
+merge Temp(in=Main) projdir.CMS_POIDList(in=CMS);
+by HMS_POID;
+if Main=1;
+if CMS=1 then CMS_Listed=1;
+else CMS_Listed=0;
+run;
+
+/* grab AHA logic from aha_demo table */
+proc sql;
+create table aha_demo1 as select x.HMS_POID, b.*
+from op_poids_list1 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &vintage. and x.ID_TYPE = 'AHA'
+left join fxfiles.aha_demo b on x.value = b.id
+;
+quit;
+
+proc sort data = op_poids_list1;
+by HMS_POID;
+run;
+proc sort data = aha_demo1;
+by HMS_POID;
+run;
+
+data op_poids_list2;
+merge op_poids_list1(in=a) aha_demo1(in=b);
+by HMS_POID;
+if a;
+if b then AHA_Listed = 1;
+else AHA_listed = 0;
+run;
+
+/* Add POS List */
+proc sql;
+create table pos_demo1 as select a.HMS_POID, x.VALUE as POS_ID, x.RANK
+from op_poids_list2 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &vintage. and x.ID_TYPE = 'POS'
+;
+quit;
+
+proc sort data=pos_demo1 nodupkey;
+by HMS_POID;
+run;
+
+data op_poids_list3;
+merge op_poids_list2(in=a) pos_demo1(in=b keep=HMS_POID);
+by HMS_POID;
+if a;
+if b then POS_Listed = 1;
+else POS_listed = 0;
+run;
+
+/* Filter down to listed POIDs */
+data op_poids_emd2;
+set op_poids_list3;
+where WK_Listed = 0 and State_Listed = 0 and CMS_Listed = 0
+and (AHA_Listed = 1 or POS_Listed = 1);
+keep HMS_POID vendor_code;
+run;
+
+data claim.op_poids;
+set claim.op_poids op_poids_emd2;
+run;
+
+/************************************** End of modification **************************************/
+
 
 proc sort data = claim.op_poids ( where = ( hms_poid ^= 'NULL' ) ) out = op_poids nodupkey; by hms_poid; run;
 
@@ -151,7 +264,11 @@ data op_datamatrix ( where = ( hms_poid ^= ' ' ) ); /* Impute as median value if
   if TactInsField = . then TactInsField = &TactInsField;
   if unemp = . then unemp = &unemp;
   run;
-   
+  
+
+
+/* ASC Part */
+
 /* Pull ASC Claims from Oracle */
 proc sql;
   connect to oracle( user = &USERNAME. password = &PASSWORD. path = &INSTANCE. );
@@ -162,7 +279,7 @@ proc sql;
 	    where b.FACILITY_ID = c.FACILITY_ID
              and d.job_id = &AGGREGATION_ID
 		     and b.Bill_Classification_ID = e.Bill_Classification_ID and e.CLASSIFICATION_CODE = '083'
-		     and b.vendor_id = d.vendor_id and d.vendor_code in ('EMD','FLOP','NYOP')
+		     and b.vendor_id = d.vendor_id and d.vendor_code in ('EMD','FLOP','NYOP','WS') /* new source */
 		     and b.LOAD_BATCH <= d.LAST_VEND_BATCH
 		     and ( b.CLAIM_THROUGH_DATE between d.FIRST_VEND_DATE and d.LAST_VEND_DATE )
 		     and ( to_date( %unquote( %str( %'&Vintage%' ) ), 'YYYYMMDD' ) between c.START_DATE and c.END_DATE ) );
@@ -184,10 +301,17 @@ proc sql ;
   disconnect from oracle;
   quit;
 
-/* ASC Claims from Emdeon Switch with non-null NPI */
-data ASC_claims_sw;
+/* ASC Claims from Emdeon & Waystar Switch with non-null NPI */
+data ASC_claims_emd;
   set ASC_claims;
   if vendor_code = 'EMD' and ID_TYPE = 'NPI' then do;
+    if ID_VALUE = 'NULL' then delete;
+    output;
+    end;
+  run;
+data ASC_claims_ws;
+  set ASC_claims;
+  if vendor_code = 'WS' and ID_TYPE = 'NPI' then do;
     if ID_VALUE = 'NULL' then delete;
     output;
     end;
@@ -307,18 +431,26 @@ data CMS_ASC;
   run;
 
 data EMD_ASC;
-  set ASC_claims_sw;
+  set ASC_claims_emd;
   
   ORG_NPI = ID_VALUE;
   EMD_flag = 1;
   keep ORG_NPI EMD_flag;
   run;
+data WS_ASC;
+  set ASC_claims_ws;
+  
+  ORG_NPI = ID_VALUE;
+  WS_flag = 1;
+  keep ORG_NPI WS_flag;
+  run;
   
 proc sort data = CMS_ASC nodupkey; by ORG_NPI; run;
 proc sort data = EMD_ASC nodupkey; by ORG_NPI; run;
+proc sort data = WS_ASC nodupkey; by ORG_NPI; run;
 
-data EMD_CMS_ASC;
-  merge EMD_ASC CMS_ASC;
+data EMD_WS_CMS_ASC;
+  merge EMD_ASC WS_ASC CMS_ASC;
   by ORG_NPI;
   run;
 
@@ -334,11 +466,11 @@ proc sql;
   disconnect from oracle ;
   quit;
 
-proc sort data = EMD_CMS_ASC; by ORG_NPI; run;
+proc sort data = EMD_WS_CMS_ASC; by ORG_NPI; run;
 proc sort data = NPI_POID; by ORG_NPI; run;
 
-data EMD_CMS_ASC_POID;
-  merge NPI_POID EMD_CMS_ASC ( in = a );
+data EMD_WS_CMS_ASC_POID;
+  merge NPI_POID EMD_WS_CMS_ASC ( in = a );
   by ORG_NPI;
 
   if a then do;
@@ -350,22 +482,26 @@ data EMD_CMS_ASC_POID;
 
 /* Look for duplicate POIDs after mapping from NPI */
 proc sort data = States_migr; by HMS_POID; run;
-proc sort data = EMD_CMS_ASC_POID; by HMS_POID; run;
-proc sort data = EMD_CMS_ASC_POID nodupkey out = temp dupout = dup_poids ( keep = HMS_POID ); by HMS_POID; run;
+proc sort data = EMD_WS_CMS_ASC_POID; by HMS_POID; run;
+proc sort data = EMD_WS_CMS_ASC_POID nodupkey out = temp dupout = dup_poids ( keep = HMS_POID ); by HMS_POID; run;
 proc sort data = dup_poids nodupkey; by HMS_POID; run;
 
 data determine; /* Look for POIDs that are duplicated in dataset after mapping NPI */
-  merge dup_poids(in=a) EMD_CMS_ASC_POID;
+  merge dup_poids(in=a) EMD_WS_CMS_ASC_POID;
   by HMS_POID;
   if a then output;
   run;
 
 data determine2; /* Source of POID */
   set determine;
-  if EMD_flag = 1 and CMS_flag = 1 then Type = 'Both';
-  else if EMD_flag = 1 and CMS_flag = . then Type = 'EMD';
-  else if EMD_flag = . and CMS_flag = 1 then Type = 'CMS';
-  drop EMD_flag CMS_flag;
+       if EMD_flag = 1 and WS_flag = 1 and CMS_flag = 1 then Type = '1:All3  ';
+  else if EMD_flag = 1 and WS_flag = . and CMS_flag = 1 then Type = '2:EMDCMS';
+  else if EMD_flag = . and WS_flag = 1 and CMS_flag = 1 then Type = '3:WSCMS ';
+  else if EMD_flag = 1 and WS_flag = 1 and CMS_flag = . then Type = '4:EMDWS ';
+  else if EMD_flag = . and WS_flag = . and CMS_flag = 1 then Type = '5:CMS   ';
+  else if EMD_flag = 1 and WS_flag = . and CMS_flag = . then Type = '6:EMD   ';
+  else if EMD_flag = . and WS_flag = 1 and CMS_flag = . then Type = '7:WS    ';
+  drop EMD_flag WS_flag CMS_flag;
   run;
 
 /* Sort by Type & NODUPKEY for Type --- So alphabetical BOTH - CMS - EMD */
@@ -380,31 +516,54 @@ proc transpose data = determine2 out = determine3;
 data determine4; 
   set determine3;
   
-  /* COL1 = 'Both' if any entry had both */
-  if COL1 = 'Both' then do; EMD_flag = 1; CMS_flag = 1; end;
+  /* COL1 = '1:All3' if any entry had all 3 sources */
+  if COL1 = '1:All3' then do; EMD_flag = 1; WS_flag = 1; CMS_flag = 1; end;
   
-  /* COL1 = 'CMS' if no entry had both --- if COL2 has 'EMD' then one entry from each source */
-  else if COL1 = 'CMS' then do; CMS_flag = 1;
-    if COL2 = 'EMD' then EMD_flag = 1;
+  /* COL1 = '2:EMDCMS' if no entry had all 3 sources  */
+  else if COL1 = '2:EMDCMS' then do; EMD_flag = 1; CMS_flag = 1;
+    if COL2 in ('3:WSCMS','4:EMDWS','7:WS') then WS_flag = 1;
+    end;
+
+  /* COL1 = '3:WSCMS' if no entry had all 3 sources  */
+  else if COL1 = '3:WSCMS' then do; WS_flag = 1; CMS_flag = 1;
+    if COL2 in ('4:EMDWS','6:EMD') then EMD_flag = 1;
+    end;
+
+  /* COL1 = '4:EMDWS' if no entry had all 3 sources  */
+  else if COL1 = '4:EMDWS' then do; EMD_flag = 1; WS_flag = 1;
+    if COL2 in ('5:CMS') then CMS_flag = 1;
+    end;
+
+  /* COL1 = '5:CMS' if no entry had all 3 sources */
+  else if COL1 = '5:CMS' then do; CMS_flag = 1;
+    if COL2 = '6:EMD' then EMD_flag = 1;
+    else if COL2 = '7:WS' then WS_flag = 1;
     end;
 	
-  /* If COL1 = 'EMD' then this is the only source */	
-  else if COL1 = 'EMD' then EMD_flag = 1;
-  keep HMS_POID EMD_flag CMS_flag;
+  /* COL1 = '6:EMD' if no entry had all 3 sources */
+  else if COL1 = '6:EMD' then do; EMD_flag = 1;
+    if COL2 = '7:WS' then WS_flag = 1;
+    end;
+	
+  /* COL1 = 'WS' if no entry had all 3 sources */
+  else if COL1 = 'WS' then WS_flag = 1;
+	
+  keep HMS_POID EMD_flag WS_flag CMS_flag;
   run;
 
 /* Merge the undupped EMD_CMS dataset with EMD_Flag and CMS_Flag --- creates across all mappings to the POID */
-data EMD_CMS_ASC_CORRECT; 
+data EMD_WS_CMS_ASC_CORRECT; 
   merge temp determine4;
   by HMS_POID;
   run;
 
 /* Merge together Emdeon Switch, CMS, and State Data */
 data ASC_POID_Matrix;
-  merge EMD_CMS_ASC_CORRECT States_migr;
+  merge EMD_WS_CMS_ASC_CORRECT States_migr;
   by HMS_POID;
   
   if EMD_flag = . then EMD_flag = 0;
+  if WS_flag = . then WS_flag = 0;
   if CMS_flag = . then CMS_flag = 0;
   if CA_flag = . then CA_flag = 0;
   if FL_flag = . then FL_flag = 0;
@@ -437,9 +596,10 @@ data All_poids ( compress = yes );
   
   if a then do;
     if EMD_flag = . then EMD_flag = 0;
+    if WS_flag = . then WS_flag = 0;
     if CMS_flag = . then CMS_flag = 0;
     if CA_flag = 1 or FL_flag = 1 or NY_flag = 1 then State_flag = 1; else State_flag = 0;
-    Flag_Sum = EMD_flag + CMS_flag + State_flag;
+    Flag_Sum = EMD_flag + WS_flag + CMS_flag + State_flag;
     drop ALLOWED_SERVICES;
     output; 
     end;
@@ -447,14 +607,14 @@ data All_poids ( compress = yes );
 
 data All_poids_final ( compress = yes );
   set All_poids;
-  where EMD_flag = 1 or CMS_flag = 1 or State_flag = 1;
+  where EMD_flag = 1 or WS_flag = 1 or CMS_flag = 1 or State_flag = 1;
   run;
 
 data POID_matrix;
   set All_poids_final;
   rename hms_poid = HMS_POID;
   label HMS_POID = ;
-  keep HMS_POID EMD_flag CMS_flag State_flag ORG_NAME ORG_TYPE ADDRESS_LINE1 ADDRESS_LINE2 CITY STATE ZIP ZIP4;
+  keep HMS_POID EMD_flag WS_flag CMS_flag State_flag ORG_NAME ORG_TYPE ADDRESS_LINE1 ADDRESS_LINE2 CITY STATE ZIP ZIP4;
   run;
 
 /* Merge in covariates */
@@ -582,7 +742,3 @@ data claim.asc_datamatrix;
   by HMS_POID;
   if a and b then output;
   run;
-
-
-  
-
