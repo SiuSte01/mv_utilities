@@ -68,7 +68,9 @@ foreach my $b (keys %bucketlist)
   my @f=split '\t';
   print OUT "$bucketmap{$b}\t$act_header{$bucketlist{$b}}\t$f[0]\t$f[1]\t";
   print OUT $f[2] < 11 ? "*" : $f[2],"\t";
-  print OUT $f[3] < 11 ? "*" : $f[3],"\n";
+  print OUT $f[3] < 11 ? "*" : $f[3],"\t";
+  print OUT $f[4] < 11 ? "*" : $f[4],"\t";
+  print OUT $f[5] < 11 ? "*" : $f[5],"\n";
  }
  close(INP1);
 
@@ -85,7 +87,9 @@ foreach my $b (keys %bucketlist)
    #changed to Grp2 on 10.06.2015
    print OUT "$bucketmap{$b}\tActivity_Level_Grp2\t$f[0]\t$f[1]\t";
    print OUT $f[2] < 11 ? "*" : $f[2],"\t";
-   print OUT $f[3] < 11 ? "*" : $f[3],"\n";
+   print OUT $f[3] < 11 ? "*" : $f[3],"\t";
+   print OUT $f[4] < 11 ? "*" : $f[4],"\t";
+   print OUT $f[5] < 11 ? "*" : $f[5],"\n";
   }
   close(INP2);
  }
