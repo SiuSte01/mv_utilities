@@ -954,7 +954,7 @@ quit ;
 
 /* Add in Week Of */
 data weekdays;
-do DATE = 1262304000 to 1924992000 by 86400;
+do DATE = 1262304000 to 2587680000 by 86400;
 YEAR = YEAR(datepart(DATE));
 MONTH = MONTH(datepart(DATE));
 WEEK = WEEK(datepart(DATE),'u');
@@ -1359,25 +1359,30 @@ run;
 data _null_;
 set inputs;
 
-if PARAMETER = 'COMPARE_FILE' then do;
-	if VALUE = '' then do;
-		call symput('compare_file','none');
-		call symput('file_exist',0);
-	end;
-	else do;
-		call symput('compare_file',trim(left(compress(value))));
-		call symput('file_exist',1);
-	end;
-end;
-else do;
-	call symput('compare_file','none');
-	call symput('file_exist',0);
-end;
-
 if PARAMETER = 'PERIOD' then do;
 	if VALUE = 'WEEK' then call symput('week_flag',1);
 	else if VALUE = 'MONTH' then call symput('week_flag',2);
 	else if VALUE = 'YEAR' then call symput('week_flag',3);
+end;
+
+run;
+
+data input_compare;
+set inputs;
+where PARAMETER = 'COMPARE_FILE';
+keep VALUE;
+run;
+
+data _null_;
+set input_compare;
+
+if VALUE = '' then do;
+	call symput('compare_file','none');
+	call symput('file_exist',0);
+end;
+else do;
+	call symput('compare_file',trim(left(compress(value))));
+	call symput('file_exist',1);
 end;
 
 run;
