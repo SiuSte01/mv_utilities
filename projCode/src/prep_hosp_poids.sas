@@ -75,7 +75,14 @@ end;
 
 run;
 
+/* figure out the MDSI table name from the vintage */
+data _null_ ;
+demo=catt("idngpo_",substr(compress(&used_vintage), 5, 4),"_demographics");
+call symput('MDSI_table',demo);
+run;
+
 %put 'Vintage: ' &used_vintage;
+%put 'MDSI Table Name:' &MDSI_table;
 %put 'FXFILES:' &fxfiles;
 %put 'PROJDIR:' &projdir;
 %put 'INSTANCE:' &instance;
@@ -95,7 +102,11 @@ proc sort data=matrloc.ip_Datamatrix out=matrloc.AHA_Data_v3_Mig;
 by HMS_POID;
 run;
 
-data matrloc.POID_Beds;
+/* join AHA and MDSI tables */
+proc sort data=matrloc.AHA_Data_v3_Mig;
+by HMS_POID;
+run;
+data matrloc.POID_AHA_MDSI;
 set matrloc.AHA_Data_v3_Mig;
 
 Matrix_Listed=1;
@@ -105,8 +116,8 @@ AHD_Beds = .; /* No longer using AHD data as of 1/28/2020 */
 /* set AHA_Listed to 1 if any AHA data exists */
 if SERV ~= '' or RESP ~= '' or CHC ~= '' or COMMTY ~= ''
 or LOS ~= '' or MAPP1 ~= '' or MAPP2 ~= '' or MAPP3 ~= '' or MAPP5 ~= ''
-or MAPP7 ~= '' or MAPP8 ~= '' or MAPP11 ~= '' or MAPP12 ~= ''
-or MAPP13 ~= '' or MAPP16 ~= '' or MAPP18 ~= '' or MAPP19 ~= '' or MAPP20 ~= ''
+or MAPP7 ~= '' or MAPP8 ~= '' or MAPP11 ~= ''
+or MAPP16 ~= '' or MAPP18 ~= '' or MAPP19 ~= '' or MAPP20 ~= ''
 or HOSPBD ~= . or BDTOT ~= . or BIRTHS ~= . or SUROPIP ~= . or SUROPOP ~= .
 or SUROPTOT ~= . or ADMTOT ~= . or IPDTOT NE . or MCRDC ~= . or MCRIPD ~= .
 or MCDDC ~= . or MCDIPD ~= . or VEM ~= . or VOTH ~= . or VTOT ~= . or
@@ -116,10 +127,13 @@ else AHA_Listed = 0;
 
 run;
 
-/* Should now be always zero for MDSI Listed */
-proc freq data=matrloc.POID_Beds;
-tables AHA_Listed*MDSI_Listed / list missing;
-run;
+proc sql;
+create table matrloc.POID_Beds
+as select aha.*
+from matrloc.POID_AHA_MDSI aha
+;
+quit;
+/* MODIFICATION 10/21/2016: Removed WebSearch Beds */
 
 /* read POID class table from Oracle */
 proc sql;
@@ -208,6 +222,91 @@ run;
 
 libname matrloc '.';
 
+/******* TEMPORARY EMD LIST QUERY **********/
+libname profile oracle user = claims_usr password = claims_usr123 path = PLDWH2DBR SCHEMA = profileData;
+
+proc sql;
+	connect to oracle(user=&username password=&password path=&instance);
+	create table projdir.EMD_POIDList as
+	select * from connection to oracle
+	(select distinct xwalk.id_value as hms_poid
+	from claimswh.inst_claims inst,
+	claims_aggr.job_vendors ven,
+	claimswh.facility_id_crosswalk xwalk,
+	claimswh.bill_classifications bill
+	where (inst.claim_through_date between ven.first_vend_date and ven.last_vend_date )
+	and inst.vendor_id = ven.vendor_id and ven.vendor_code = 'EMD'
+	and inst.facility_id = xwalk.facility_id
+	and inst.bill_classification_id = bill.bill_classification_id and bill.classification_code in ('011','013')
+	and inst.load_batch <= ven.last_vend_batch
+	and xwalk.id_type = 'POID'
+	and substr(xwalk.id_value,1,2) = 'PO'
+	and length(xwalk.id_value) = 10
+	and ven.job_id = &aggregation_id.
+	);	
+   disconnect from oracle ; 
+quit ;
+proc sort data=projdir.EMD_POIDList;
+by HMS_POID;
+run;
+
+proc sort data=projdir.EMD_POIDList out=op_poids_list1;
+by HMS_POID;
+run;
+
+/* grab AHA logic from aha_demo table */
+proc sql;
+create table aha_demo1 as select x.HMS_POID, b.*
+from op_poids_list1 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &used_vintage. and x.ID_TYPE = 'AHA'
+left join fxfiles.aha_demo b on x.value = b.id
+;
+quit;
+
+proc sort data = op_poids_list1;
+by HMS_POID;
+run;
+proc sort data = aha_demo1;
+by HMS_POID;
+run;
+
+data op_poids_list2;
+merge op_poids_list1(in=a) aha_demo1(in=b);
+by HMS_POID;
+if a;
+if b then AHA_Listed = 1;
+else AHA_listed = 0;
+run;
+
+/* Add POS List */
+proc sql;
+create table pos_demo1 as select a.HMS_POID, x.VALUE as POS_ID, x.RANK
+from op_poids_list2 a
+inner join profile.Poid_Identifiers_View x 
+on a.hms_poid = x.hms_poid and x.vintage_num = &used_vintage. and x.ID_TYPE = 'POS'
+;
+quit;
+
+proc sort data=pos_demo1 nodupkey;
+by HMS_POID;
+run;
+
+data op_poids_list3;
+merge op_poids_list2(in=a) pos_demo1(in=b keep=HMS_POID);
+by HMS_POID;
+if a;
+if b then POS_Listed = 1;
+else POS_listed = 0;
+run;
+
+data EMD_POIDList;
+set op_poids_list3;
+where AHA_Listed = 1 or POS_Listed = 1;
+keep HMS_POID;
+run;
+
+
 /* MODIFICATION 08.07.2018: Removed some unnecessary reformats */
 
 /* clean up blank POIDs and duplicates in POID lists */
@@ -235,6 +334,14 @@ proc sort data=projdir.CMS_POIDList nodupkey;
 by HMS_POID;
 run;
 
+data EMD_POIDList;
+set EMD_POIDList;
+if HMS_POID ~= '';
+run;
+proc sort data=EMD_POIDList nodupkey; 
+by HMS_POID;
+run;
+
 /* Add WK totals to POID table */
 data matrloc.POID_Volume;
 merge matrloc.POID_Volume_&used_vintage.(in=matrix) /* MODIFICATION 6/22/2016: change to project directory */
@@ -244,9 +351,18 @@ if matrix=1;
 if WK=1 then WK_Listed=1;
 else WK_Listed=0;
 run;
-/* Add State totals to POID table */
+/* Add EMD totals to POID table */
 data matrloc.Temp;
 merge matrloc.POID_Volume(in=matrix) 
+EMD_POIDList(in=EMD);
+by HMS_POID;
+if matrix=1;
+if EMD=1 then EMD_Listed=1;
+else EMD_Listed=0;
+run;
+/* Add State totals to POID table */
+data matrloc.Temp2;
+merge matrloc.Temp(in=matrix) 
 projdir.State_POIDList(in=State);
 by HMS_POID;
 if matrix=1;
@@ -255,7 +371,7 @@ else State_Listed=0;
 run;
 /* Add CMS totals to POID table */
 data matrloc.POID_Volume;
-merge matrloc.Temp(in=Main) projdir.CMS_POIDList(in=CMS);
+merge matrloc.Temp2(in=Main) projdir.CMS_POIDList(in=CMS);
 by HMS_POID;
 if Main=1;
 if CMS=1 then CMS_Listed=1;
@@ -268,14 +384,15 @@ if Matrix_Listed =.  then Matrix_Listed = 0;
 if AHA_Listed    =.  then AHA_Listed    = 0;
 if Class_Listed  =.  then Class_Listed  = 0;
 if WK_Listed     =.  then WK_Listed     = 0;
+if EMD_Listed    =.  then EMD_Listed    = 0;
 if State_Listed  =.  then State_Listed  = 0;
 if CMS_Listed    =.  then CMS_Listed    = 0;
 run;   
 
-/* Remove POIDs that are missing in WK/State/CMS */
+/* Remove POIDs that are missing in WK/EMD/State/CMS */
 data matrloc.POID_Limited;
 set matrloc.POID_Volume;
-if WK_Listed=1 or State_Listed=1 or CMS_Listed=1;   
+if WK_Listed=1 or EMD_Listed=1 or State_Listed=1 or CMS_Listed=1;   
 run;
 
 /* Use the already generated and sorted poid/zip/state dataset */
@@ -423,8 +540,8 @@ if VEM ~= . then Adj_VEM = VEM;
 if ADC ~= . then Adj_ADC = ADC;
 run;
 
-/* Estimate AHA categorical attributes based on bed decile - use proc rank to compute deciles */
-proc freq data = matrloc.POID_Imputed;
+/* Estimate AHA categorical attributes based on bed decile */
+proc freq data=matrloc.POID_Imputed;
 tables Adj_Beds;
 run;
 
@@ -448,7 +565,7 @@ set ranked;
 bed_decile = bed_decile + 1; /* Offset so 10-1 instead of 9-0 */
 if SERV='' or RESP='' or CHC='' or COMMTY='' or LOS='' or MAPP1=''
 or MAPP2='' or MAPP3='' or MAPP5='' or MAPP7='' or MAPP8='' or MAPP11=''
-or MAPP12='' or MAPP13='' or MAPP16='' or MAPP18='' or MAPP19='' or MAPP20=''
+or MAPP16='' or MAPP18='' or MAPP19='' or MAPP20=''
 then AHA_cat_miss = 1;
 else AHA_cat_miss = 0;
 if HOSPBD=. or BDTOT=. or BIRTHS=. or SUROPIP=. or SUROPOP=. or SUROPTOT=.
@@ -471,7 +588,7 @@ run;
 ods output OneWayFreqs = matrloc.OneWayFreqs;
 proc freq data=matrloc.POID_With_AHA;
 tables SERV RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 
-MAPP5 MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 
+MAPP5 MAPP7 MAPP8 MAPP11 MAPP16 
 MAPP18 MAPP19 MAPP20;
 by bed_decile;
 run;
@@ -481,7 +598,7 @@ data matrloc.Temp;
 set matrloc.OneWayFreqs(rename=(Table=DecVar));
 DecVar = substr(DecVar,7);			
 DecMode = cat(SERV,RESP,CHC,COMMTY,LOS,MAPP1,MAPP2,MAPP3,MAPP5,
-MAPP7,MAPP8,MAPP11,MAPP12,MAPP13,MAPP16,MAPP18,MAPP19,MAPP20);
+MAPP7,MAPP8,MAPP11,MAPP16,MAPP18,MAPP19,MAPP20);
 DecMode = compress(DecMode,' ');			
 DecMode = compress(DecMode,'.');	/* Added 1/11/2017 */		
 keep bed_decile DecVar DecMode Percent;
@@ -581,15 +698,13 @@ if MAPP5    = '' then MAPP5    = MAPP5_Mode;
 if MAPP7    = '' then MAPP7    = MAPP7_Mode;
 if MAPP8    = '' then MAPP8    = MAPP8_Mode;
 if MAPP11   = '' then MAPP11   = MAPP11_Mode;
-if MAPP12   = '' then MAPP12   = MAPP12_Mode;
-if MAPP13   = '' then MAPP13   = MAPP13_Mode;
 if MAPP16   = '' then MAPP16   = MAPP16_Mode;
 if MAPP18   = '' then MAPP18   = MAPP18_Mode;
 if MAPP19   = '' then MAPP19   = MAPP19_Mode;
 if MAPP20   = '' then MAPP20   = MAPP20_Mode; 
 
 drop SERV_Mode RESP_Mode CHC_Mode COMMTY_Mode LOS_Mode MAPP1_Mode MAPP2_Mode MAPP3_Mode 
-MAPP5_Mode MAPP7_Mode MAPP8_Mode MAPP11_Mode MAPP12_Mode MAPP13_Mode MAPP16_Mode 
+MAPP5_Mode MAPP7_Mode MAPP8_Mode MAPP11_Mode MAPP16_Mode 
 MAPP18_Mode MAPP19_Mode MAPP20_Mode;
 run;
 
@@ -699,9 +814,10 @@ proc sort data=matrloc.POID_NewVars;
 by HMS_POID;
 run;
 
-/* remove POID if it is not found in WK/State/CMS data i.e. no prediction potential */
+/* remove POID if it is not found in WK/EMD/State/CMS data i.e. no prediction potential */
 /* remove POID if it is found in WK tables but does not exist in AHA, State and CMS */
-/* remove selected POIDs from list: army hospitals, closed facilities, Christian science nursing centers (HospitalExclusionList.tab in FXFILES)*/ 
+/* remove POID if it is found in EMD tables but does not exist in AHA, State and CMS */
+/* remove selected POIDs from list: army hospitals, SNF, closed hospitals, christian science centers */ 
 /* MODIFICATION 4/30/2019 - Removed list of hard-coded POIDS and added reference to exclusion list in FXFILES */ 
 data exclusion_list ( drop = Reason);
    infile "&FXFILES./HospitalExclusionList.tab" delimiter='09'x MISSOVER DSD lrecl=32767 firstobs=2;
@@ -720,11 +836,16 @@ data matrloc.POID_NewVars;
   by HMS_POID;
 
   if a then do;
-    if b or ( WK_listed = 0 and State_Listed = 0 and CMS_Listed = 0 ) or
-            ( WK_listed = 1 and AHA_Listed = 0 and State_Listed = 0 and CMS_Listed = 0 ) then POID_removed = 1; else POID_removed = 0;
+
+    if b or
+		(WK_listed = 0 and EMD_listed = 0 and State_Listed = 0 and CMS_Listed = 0) or
+		(WK_listed = 1 and AHA_Listed = 0 and State_Listed = 0 and CMS_Listed = 0) or
+		(EMD_listed = 1 and AHA_Listed = 0 and State_Listed = 0 and CMS_Listed = 0)
+	then POID_removed = 1; else POID_removed = 0;
 	output;
 	end;
-  run;
+run;
+/* MODIFICATION 04.26.2017 - Removed more POIDs, though they will be suppressed in future aggregations */
 
 data matrloc.POID_Removed;
 set matrloc.POID_NewVars;
@@ -741,11 +862,11 @@ retain HMS_POID
 U65pct MaPenet TactInsField Unemp
 RESP CHC COMMTY LOS 
 MAPP1 MAPP2 MAPP3 MAPP5 MAPP7 MAPP8
-MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 MAPP19 MAPP20
+MAPP11 MAPP16 MAPP18 MAPP19 MAPP20
 Adj_Beds Adj_Births Adj_SurOpIP Adj_SurOpOP Adj_AdmTot 
 IPDTOT MCRDC MCRIPD MCDDC MCDIPD 
 Adj_VEM VOTH FTMDTF FTRES FTRNTF Adj_ADC ADJADM ADJPD 
-Matrix_Listed AHA_Listed WK_Listed State_Listed CMS_Listed MDSI_Listed Zip State
+Matrix_Listed AHA_Listed WK_Listed EMD_Listed State_Listed CMS_Listed MDSI_Listed Zip State
 Valid_State POID_Class AHA_cat_miss AHA_num_miss
 log_Adj_Beds log_Adj_Births log_Adj_SurOpIP log_Adj_SurOpOP
 log_Adj_AdmTot log_IPDTOT log_MCRDC log_MCRIPD log_MCDDC log_MCDIPD 
@@ -755,12 +876,12 @@ set matrloc.POID_NewVars;
 keep HMS_POID 
 U65pct MaPenet TactInsField Unemp
 RESP CHC COMMTY LOS MAPP1 MAPP2 MAPP3 MAPP5 
-MAPP7 MAPP8 MAPP11 MAPP12 MAPP13 MAPP16 MAPP18 
+MAPP7 MAPP8 MAPP11 MAPP16 MAPP18 
 MAPP19 MAPP20
 Adj_Beds Adj_Births Adj_SurOpIP Adj_SurOpOP Adj_AdmTot
 IPDTOT MCRDC MCRIPD MCDDC MCDIPD 
 Adj_VEM VOTH FTMDTF FTRES FTRNTF Adj_ADC ADJADM ADJPD 
-Matrix_Listed AHA_Listed WK_Listed State_Listed CMS_Listed MDSI_Listed Zip State
+Matrix_Listed AHA_Listed WK_Listed EMD_Listed State_Listed CMS_Listed MDSI_Listed Zip State
 Valid_State POID_Class AHA_cat_miss AHA_num_miss 
 log_Adj_Beds log_Adj_Births log_Adj_SurOpIP log_Adj_SurOpOP
 log_Adj_AdmTot log_IPDTOT log_MCRDC log_MCRIPD log_MCDDC log_MCDIPD 
@@ -802,13 +923,22 @@ if Statee=1 then State_Listed=1;
 else State_Listed=0;
 run;
 /* Add CMS totals to POID table */
-data matrloc.POID_Volume_OP;
+data matrloc.Temp2;
 merge matrloc.Temp(in=Main) projdir.CMS_POIDList(in=CMS);
 by HMS_POID;
 if Main=1;
 if CMS=1 then CMS_Listed=1;
 else CMS_Listed=0;
 run;
+/* NEW: Add EMD list to POID table */
+data matrloc.POID_Volume_OP;
+merge matrloc.Temp2(in=Main) EMD_POIDList(in=EMD);
+by HMS_POID;
+if Main=1;
+if EMD=1 then EMD_Listed=1;
+else EMD_Listed=0;
+run;
+
 data matrloc.POID_Volume_OP;
 set matrloc.POID_Volume_OP;
 if MDSI_Listed   =.  then MDSI_Listed   = 0;
@@ -818,13 +948,20 @@ if Class_Listed  =.  then Class_Listed  = 0;
 if WK_Listed     =.  then WK_Listed     = 0;
 if State_Listed  =.  then State_Listed  = 0;
 if CMS_Listed    =.  then CMS_Listed    = 0;
+if EMD_Listed    =.  then EMD_Listed    = 0;
 run;   
 
 /* Remove POIDs that are missing in WK/State/CMS */
 data matrloc.POID_Limited_OP;
 set matrloc.POID_Volume_OP;
-if WK_Listed=1 or State_Listed=1 or CMS_Listed=1;   
+if WK_Listed=1 or State_Listed=1 or CMS_Listed=1 or EMD_Listed=1;
 run;
+proc sql;
+create table temp_emd as
+select WK_Listed, State_Listed, CMS_Listed, EMD_Listed, count(distinct HMS_POID) as poids from matrloc.POID_Limited_OP
+group by WK_Listed, State_Listed, CMS_Listed, EMD_Listed order by WK_Listed, State_Listed, CMS_Listed, EMD_Listed;
+quit;
+
 
 /* Use the already generated and sorted poid/zip/state dataset */
 proc sort data=matrloc.POID_Limited_OP out=matrloc.Temp;
@@ -968,8 +1105,8 @@ data matrloc.POID_NewVars_OP;
   by HMS_POID;
 
   if a then do;
-    if b or ( WK_listed = 0 and State_Listed = 0 and CMS_Listed = 0 ) or
-            ( WK_listed = 1 and State_Listed = 0 and CMS_Listed = 0 ) then POID_removed = 1; else POID_removed = 0;
+    if b or ( WK_listed = 0 and State_Listed = 0 and CMS_Listed = 0 and EMD_Listed = 0) or
+            ( WK_listed = 1 and State_Listed = 0 and CMS_Listed = 0 and EMD_Listed = 1) then POID_removed = 1; else POID_removed = 0;
 	output;
 	end;
   run;
