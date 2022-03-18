@@ -41,7 +41,7 @@ BEGIN
 		$lib = `conda info -e | grep '*'`;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
-		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$libDir = $sitePath . "/lib";
@@ -57,23 +57,18 @@ my $timeBegin = time();
 
 my $branch;
 my $toBranch;
-my $file;
-my $rm;
+my $msg;
 my $debug;
 
 GetOptions(
 	"branch=s"		=>\$branch,
 	"toBranch=s"	=>\$toBranch,
-	"file=s"			=>\$file,
-	"rm"				=>\$rm,
+	"msg=s"			=>\$msg,
 	"debug"			=>\$debug
 );
 
 die "-branch parameter is required\n" unless $branch;
-die "-file parameter is required\n" unless $file;
 
-system("git checkout " . $branch . " &> /dev/null");
-die "file: " . $file . " not found\n" if !$rm && !-e $file;
 print Dumper(@ogArgs) if $debug;
 
 my $memoryHash;
@@ -82,40 +77,20 @@ $memoryHash->{"BRANCHES"}->{"master"} = 1;
 $memoryHash->{"BRANCHES"}->{"hotfix"} = 1;
 $memoryHash->{"BRANCHES"}->{"dev"} = 1;
 $memoryHash->{"BRANCHES"}->{"qa"} = 1;
-$memoryHash->{"BRANCHES"}->{"tl"} = 1;
 
 die "Unrecognized branch: " . $branch . "\n" unless defined $memoryHash->{"BRANCHES"}->{$branch};
 
-my $commitMsg = "Merging " . $file . " from: " . $branch . " into other branches";
-my $rmMsg = "Removing " . $file . " from: " . $branch;
+
 foreach my $x (keys %{$memoryHash->{"BRANCHES"}})
 {
-	next if $x eq $branch && !$rm;
+	next if $x eq $branch;
 	next if $toBranch && $x ne $toBranch;
 	print $x . "\n";
+	my $commitMsg = "Merge branch '" . $branch . "' into " . $x;
+	$commitMsg = $msg if $msg;
 	system("git checkout " . $x);
-	#You want to remove $file from all branches
-	if($rm)
-	{
-		if(-e $file)
-		{
-			system("git rm -r " . $file);
-			system("git commit -m \"" . $rmMsg . "\"");
-			system("git push");
-		}
-		else
-		{
-			print "file: " . $file . " not found in branch: " . $branch . ". Nothing to git rm\n";
-		}
-	}
-	#You want to copy a $file from $branch to other branches
-	else
-	{
-		system("git checkout " . $branch . " " . $file);
-		system("git add " . $file);
-		system("git commit -m \"" . $commitMsg . "\"");
-		system("git push");
-	}
+	system("git merge " . $branch . " -m \"" . $commitMsg . "\"");
+	system("git push");
 }
 system("git checkout " . $branch);
 
