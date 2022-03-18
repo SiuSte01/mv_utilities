@@ -42,7 +42,7 @@ BEGIN
 		$lib = `conda info -e | grep '*'`;
 		$lib =~ s/^.*\*//;
 		$lib =~ s/^\s+|\s+$//g;
-		my $sitePath = `python -m site | grep $lib | grep site-packages`;
+		my $sitePath = `python -m site | grep $lib | grep -P "site-packages'"`;
 		$sitePath =~ s/^\s+|\s+$//g;
 		$sitePath =~ s/('|,)//g;
 		$sasScript = $sitePath . "/projCode/src/Trending/standard_trend.sas";
